@@ -1,12 +1,11 @@
 --[[=====================================================================
-  SHAKO · RIO + CAPA COMPAT v1.2  ·  Delta / Android / executor-agnostic
-  ---------------------------------------------------------------------
-  BUILD LEGIT:  SOLO AIMBOT + ESP (jugadores) + ESP WORLD + SETTINGS
+  SHAKO · RIO + CAPA COMPAT v1.2  ·  BUILD LEGIT  ·  CORREGIDO
+  SOLO AIMBOT + ESP (jugadores) + ESP WORLD + SETTINGS
 ======================================================================]]
 
 --=========================== AJUSTES ===========================
 local CFG = {
-    Buttons              = true,   -- botones MENU / AIM / STOP
+    Buttons              = true,
     MobileDefaults       = true,
     OverrideTargetPicker = true,
     FpsCap               = 60,
@@ -51,6 +50,7 @@ if not getnamecallmethod then getnamecallmethod = function() return getgenv()._s
 if not setthreadidentity and setidentity then setthreadidentity = setidentity end
 if not getthreadidentity then getthreadidentity = function() return 8 end end
 if not getgc then getgc = function() return {} end end
+if not loadstring and type(load) == "function" then loadstring = load end
 if not gethui then
     gethui = function()
         local ok, cg = pcall(function() return _svc("CoreGui") end)
@@ -548,9 +548,7 @@ if CFG.LoadRioFromUrl then
     if not ok then shcNotify("rio.lua: " .. tostring(err)) end
 end
 
--- FIN DE LA CAPA
--- ====== A PARTIR DE ACÁ VA TU SCRIPT (si LoadRioFromUrl = false) ======
--- shako.win | LEGIT BUILD
+-- ====== A PARTIR DE ACÁ VA TU SCRIPT ======
 
 pcall(function()
     if not game:IsLoaded() then game.Loaded:Wait() end
@@ -565,7 +563,7 @@ end
 getgenv().antiSleepy_loaded = true
 getgenv().config = getgenv().config
 
--- ==================== AXIS/HARION ANTI-CHEAT BYPASS ====================
+-- ==================== ANTI-CHEAT BYPASS ====================
 pcall(function()
 (function()
     local players = game:GetService("Players")
@@ -715,19 +713,6 @@ getgenv()._ShakoBootAt = tick()
 
 -- ==================== SOLO RIVALS ====================
 local RIVALS_GAME_ID = 6035872082
-local function notSupportedKick()
-    local msg = "this game not supported"
-    warn("[shako.win] " .. msg .. " | GameId=" .. tostring(game.GameId))
-    pcall(function()
-        local lp = game:GetService("Players").LocalPlayer
-        if lp then lp:Kick(msg) end
-    end)
-    pcall(function()
-        game:GetService("TeleportService"):Teleport(0)
-    end)
-    getgenv().antiSleepy_loaded = false
-end
-
 local _gid = tonumber(game.GameId)
 local _okGame = (_gid == RIVALS_GAME_ID)
 if not _okGame then
@@ -764,14 +749,9 @@ pcall(function() LocalPlayer:WaitForChild("PlayerGui", 12) end)
 
 local Camera = workspace.CurrentCamera
 
--- ==================== Obsidian UI ====================
-local repo = "https://raw.githubusercontent.com/xyznick/UELinoriaLib/main/"
-local Library, ThemeManager, SaveManager
-
+-- ==================== UI Library ====================
 local function httpGet(url)
-    local ok, body = pcall(function()
-        return game:HttpGet(url)
-    end)
+    local ok, body = pcall(function() return game:HttpGet(url) end)
     if ok and body and #body > 100 then return body end
     return nil
 end
@@ -788,11 +768,10 @@ local UELINORIA_REPO = "https://raw.githubusercontent.com/xyznick/UELinoriaLib/m
 local LINORIA_REPO = "https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/"
 local OBSIDIAN_REPO = "https://raw.githubusercontent.com/deividcomsono/Obsidian/main/"
 
-Library = try_load(UELINORIA_REPO .. "Library.lua")
-ThemeManager = try_load(UELINORIA_REPO .. "addons/ThemeManager.lua")
-SaveManager = try_load(UELINORIA_REPO .. "addons/SaveManager.lua")
+local Library = try_load(UELINORIA_REPO .. "Library.lua")
+local ThemeManager = try_load(UELINORIA_REPO .. "addons/ThemeManager.lua")
+local SaveManager = try_load(UELINORIA_REPO .. "addons/SaveManager.lua")
 local _usingLinoria = Library ~= nil
-local _usingUE = Library ~= nil
 
 if not Library then
     task.wait(0.25)
@@ -800,7 +779,6 @@ if not Library then
     ThemeManager = try_load(LINORIA_REPO .. "addons/ThemeManager.lua")
     SaveManager = try_load(LINORIA_REPO .. "addons/SaveManager.lua")
     _usingLinoria = Library ~= nil
-    _usingUE = false
 end
 if not Library then
     task.wait(0.25)
@@ -808,7 +786,6 @@ if not Library then
     ThemeManager = try_load(OBSIDIAN_REPO .. "addons/ThemeManager.lua")
     SaveManager = try_load(OBSIDIAN_REPO .. "addons/SaveManager.lua")
     _usingLinoria = false
-    _usingUE = false
 end
 
 if not Library or type(Library.CreateWindow) ~= "function" then
@@ -820,7 +797,7 @@ do
     local function wrapGroupbox(gb)
         if not gb or gb.__shakoPatched then return gb end
         gb.__shakoPatched = true
-        local function hook(method, valueKey)
+        local function hook(method)
             local old = gb[method]
             if type(old) ~= "function" then return end
             gb[method] = function(self, idx, opts)
@@ -833,16 +810,11 @@ do
                         local Options = Library.Options or getgenv().Options
                         if method == "AddToggle" and Toggles and Toggles[idx] then
                             pcall(function()
-                                Toggles[idx]:OnChanged(function()
-                                    pcall(cb, Toggles[idx].Value)
-                                end)
+                                Toggles[idx]:OnChanged(function() pcall(cb, Toggles[idx].Value) end)
                             end)
                         elseif Options and Options[idx] then
                             pcall(function()
-                                Options[idx]:OnChanged(function()
-                                    local v = Options[idx].Value
-                                    pcall(cb, v)
-                                end)
+                                Options[idx]:OnChanged(function() pcall(cb, Options[idx].Value) end)
                             end)
                         end
                     end)
@@ -855,13 +827,11 @@ do
         hook("AddDropdown")
         local oldBtn = gb.AddButton
         if type(oldBtn) == "function" then
-            gb.AddButton = function(self, opts)
-                if type(opts) == "table" and opts.Func and not opts.Callback then
-                    if _usingLinoria then
-                        return oldBtn(self, opts.Text or "Button", opts.Func)
-                    end
+            gb.AddButton = function(self, a, b)
+                if type(a) == "table" then
+                    return oldBtn(self, a.Text or "Button", a)
                 end
-                return oldBtn(self, opts)
+                return oldBtn(self, a, b)
             end
         end
         return gb
@@ -891,9 +861,7 @@ do
             AutoShow = opts.AutoShow ~= false,
             TabPadding = 8,
         })
-        if not ok or not win then
-            return oldCreate(self, opts)
-        end
+        if not ok or not win then return oldCreate(self, opts) end
         local oldAddTab = win.AddTab
         if type(oldAddTab) == "function" then
             win.AddTab = function(self, name, ...)
@@ -903,46 +871,10 @@ do
         end
         return win
     end
-
-    local oldNotify = Library.Notify
-    if type(oldNotify) == "function" then
-        Library.Notify = function(self, a, b, c)
-            if type(a) == "table" then
-                local title = a.Title or a.title or "shako"
-                local desc = a.Description or a.description or a.Text or ""
-                local t = a.Time or a.time or 3
-                local msg = (desc ~= "" and (tostring(title) .. " · " .. tostring(desc))) or tostring(title)
-                return oldNotify(self, msg, t)
-            end
-            return oldNotify(self, a, b, c)
-        end
-    end
 end
 getgenv()._ShakoUsingLinoria = _usingLinoria
 
-task.defer(function()
-    task.wait(0.3)
-    pcall(function()
-        local k = (getgenv().config and getgenv().config.MenuKey) or "RightShift"
-        Library.ToggleKeybind = tostring(k)
-        getgenv()._ShakoMenuKey = tostring(k)
-    end)
-end)
-
 pcall(function() Library.ShowCustomCursor = true end)
-
-local LucideIcons = {}
-pcall(function()
-    LucideIcons = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/Icons/refs/heads/main/lucide/dist/Icons.lua"))() or {}
-end)
-local function Icon(n)
-    local f = LucideIcons[string.lower(tostring(n or ""))]
-    if type(f) == "string" then
-        local id = f:match("rbxassetid://(%d+)") or f:match("(%d+)")
-        if id then return id end
-    end
-    return nil
-end
 
 if ThemeManager and ThemeManager.SetLibrary then
     pcall(function()
@@ -954,9 +886,6 @@ if SaveManager and SaveManager.SetLibrary then
     pcall(function()
         SaveManager:SetLibrary(Library)
         SaveManager:SetFolder("shako_win/configs")
-        if ThemeManager and SaveManager.IgnoreThemeSettings then
-            pcall(function() SaveManager:IgnoreThemeSettings() end)
-        end
         pcall(function() SaveManager:SetIgnoreIndexes({"MenuKeybind"}) end)
     end)
 end
@@ -966,11 +895,7 @@ do
     local ok, win = pcall(function()
         pcall(function()
             Library.Font = Enum.Font.Gotham
-            if Library.SetFontSize then
-                Library:SetFontSize(13)
-            else
-                Library.FontSize = 13
-            end
+            if Library.SetFontSize then Library:SetFontSize(13) else Library.FontSize = 13 end
         end)
         return Library:CreateWindow({
             Title = "RioRage.win",
@@ -987,7 +912,6 @@ do
         return
     end
     Window = win
-
     pcall(function()
         Library.ShowCustomCursor = true
         UserInputService.MouseBehavior = Enum.MouseBehavior.Default
@@ -996,42 +920,18 @@ do
 end
 
 pcall(function()
-    if Library.SetWatermark then
-        Library:SetWatermark("shako.win · LEGIT")
-    end
-    if Library.Watermark then
-        pcall(function() Library.Watermark.Text = "shako.win · LEGIT" end)
-    end
-end)
-
-pcall(function()
-    if Library and Library.Notify then
-        getgenv()._ShakoLibraryNotify = Library.Notify
-        Library.Notify = function(self, data)
-            return
-        end
-    end
+    if Library.SetWatermark then Library:SetWatermark("shako.win · LEGIT") end
 end)
 
 function Notify(title, text)
-    if tostring(title) ~= "Config" then return end
     pcall(function()
         game:GetService("StarterGui"):SetCore("SendNotification", {
-            Title = "Config",
-            Text = tostring(text or ""),
-            Duration = 3,
+            Title = tostring(title or "shako"), Text = tostring(text or ""), Duration = 3,
         })
     end)
-    pcall(function()
-        local fn = getgenv()._ShakoLibraryNotify
-        if type(fn) == "function" then
-            fn(Library, { Title = "Config", Description = tostring(text or ""), Time = 3 })
-        end
-    end)
 end
-getgenv()._ShakoBootAt = tick()
 
--- ==================== CONFIG (settings intactas) ====================
+-- ==================== CONFIG ====================
 getgenv().config = {
     Enabled = false,
 
@@ -1054,7 +954,6 @@ getgenv().config = {
     AimbotFOVFillC1 = Color3.fromRGB(255, 210, 80),
     AimbotFOVFillC2 = Color3.fromRGB(255, 140, 60),
     AimbotFOVFillC3 = Color3.fromRGB(255, 80, 120),
-    AimbotSmooth = 0.15,
 
     SilentAimEnabled = false,
     SilentHitPart = "Head",
@@ -1088,50 +987,37 @@ getgenv().config = {
     TeamCheck = true,
     MaxRange = 1e9,
     SpawnDelay = 0.5,
-
     ExtendMeleeRange = false,
     ExtendMeleeRangeDist = 10,
 
-    -- ESP (jugadores)
     ESPEnabled = false,
     ESPPerfMode = true,
     ESPMaxPlayers = 6,
     ESPUpdateInterval = 0.05,
     ESPTeamCheck = false,
-    ESPTeamColor = Color3.fromRGB(80, 180, 255),
-    ESPEnemyColor = Color3.fromRGB(255, 255, 255),
-    ESPFilledBox = false,
-    ESPHeldWeapon = false,
-    ESPHealthNumber = false,
-    ESPTracer = false,
-    ESPTracerColor = Color3.fromRGB(255, 255, 255),
-    ESPHeadMarker = false,
-    ESPUseDisplayName = false,
     ESP = false,
     ESPBox = true,
-    ESPBoxStyle = "Full Box",
-    ESPBoxThickness = 1,
+    ESPBoxStyle = "Corner Brackets",
+    ESPBoxThickness = 2,
     ESPBoxColor = Color3.fromRGB(255, 255, 255),
     ESPName = true,
     ESPDistance = true,
     ESPHealth = true,
     ESPHealthBar = true,
+    ESPHealthNumberMode = "Off",
     ESPSkeleton = false,
     ESPTracers = false,
-    ESPMaxDistance = 100000,
+    ESPHeadDot = false,
+    ESPChams = false,
+    ESPMaxDistance = 1500,
     ESPDistanceScaling = true,
     ESPDistanceScalingRef = 50,
-    ESPMaxDist = 1e9,
-    ESPInfiniteRange = true,
     ESPShowName = true,
     ESPShowDist = true,
     ESPShowHP = true,
     ESPShowBox = true,
-    ESPColor = "Red",
-    ESPHealthBarColor = "Green",
-    ESPUseTeamColor = false,
+    ESPVisibleCheck = false,
 
-    -- ESP WORLD
     Fullbright = false,
     Brightness = 2,
     Exposure = 0,
@@ -1147,17 +1033,11 @@ getgenv().config = {
     LightingOverride = false,
     AmbientR = 120, AmbientG = 120, AmbientB = 140,
     OutdoorR = 140, OutdoorG = 140, OutdoorB = 160,
-    ColorShiftEnabled = false,
-    ColorShiftR = 0, ColorShiftG = 0, ColorShiftB = 0,
     TintEnabled = false,
     TintR = 255, TintG = 255, TintB = 255,
-    ShadowsEnabled = true,
     GlobalShadows = true,
-    EnvironmentDiffuse = 1,
-    EnvironmentSpecular = 1,
     WallXray = false,
     WallTransparency = 0.55,
-    WallLocalOnly = true,
     MapColorEnabled = false,
     MapColorR = 80, MapColorG = 80, MapColorB = 100,
     RemoveTextures = false,
@@ -1174,12 +1054,8 @@ local modulesOK = false
 function loadRivalsModules()
     local ok1, u = pcall(function() return require(RS.Modules.Utility) end)
     local ok2, e = pcall(function() return require(RS.Modules.EnumLibrary) end)
-    local ok3, fc = pcall(function()
-        return require(LocalPlayer.PlayerScripts.Controllers.FighterController)
-    end)
-    local ok4, sc = pcall(function()
-        return require(LocalPlayer.PlayerScripts.Controllers:WaitForChild("SpectateController"))
-    end)
+    local ok3, fc = pcall(function() return require(LocalPlayer.PlayerScripts.Controllers.FighterController) end)
+    local ok4, sc = pcall(function() return require(LocalPlayer.PlayerScripts.Controllers:WaitForChild("SpectateController")) end)
     if ok1 and ok2 and ok3 then
         util, enum, FighterController = u, e, fc
         if ok4 then SpectateController = sc end
@@ -1192,24 +1068,15 @@ end
 
 task.spawn(function()
     for _ = 1, 40 do
-        if loadRivalsModules() then
-            pcall(function() Notify("Rivals", "FighterController OK") end)
-            break
-        end
+        if loadRivalsModules() then break end
         task.wait(0.4)
     end
 end)
 
 -- ==================== CONNECTIONS + HELPERS ====================
 local Connections = {
-    Main = nil, StickRender = nil, Fly = nil, AntiUnnamed = nil,
-    Noclip = nil, AntiAim = nil, Ragebot = nil, AutoClick = nil,
-    NoRecoil = nil, AUWatch = nil, ESP = nil, VisualLoop = nil,
-    Aimbot = nil, AimbotInput = nil, AimbotInputEnd = nil, RapidFireChar = nil, VoidSpam = nil,
-    PredDodge = nil, Triggerbot = nil, SilentFOV = nil, FOVDraw = nil, Weather = nil, Defense = nil,
-    SleepyCounter = nil, KiciaCounter = nil, StickBehind = nil, RageInd = nil, FakePosition = nil,
-    ForceField = nil, ForceFieldLoop = nil, Riot = nil, RiotAbuse = nil, Blink = nil,
-    MatchAutos = nil, AutoCollect = nil, AntiAimChar = nil, Manipulation = nil,
+    Main = nil, ESP = nil, Aimbot = nil, AimbotInput = nil, AimbotInputEnd = nil,
+    FOVDraw = nil, SilentFOV = nil, VisualLoop = nil,
 }
 
 function SafeDisconnect(name)
@@ -1217,8 +1084,6 @@ function SafeDisconnect(name)
     if not c then return end
     if type(c) == "thread" then
         pcall(task.cancel, c)
-    elseif type(c) == "table" then
-        pcall(function() if c.Disconnect then c:Disconnect() end end)
     else
         pcall(function() if c.Disconnect then c:Disconnect() end end)
     end
@@ -1235,14 +1100,10 @@ function getPlayerTeamId(plr)
     if not plr then return nil end
     local tid = nil
     pcall(function() tid = plr:GetAttribute("TeamID") end)
-    if tid == nil then
-        pcall(function() tid = plr:GetAttribute("Team") end)
-    end
+    if tid == nil then pcall(function() tid = plr:GetAttribute("Team") end) end
     if tid == nil and plr.Character then
         pcall(function() tid = plr.Character:GetAttribute("TeamID") end)
-        if tid == nil then
-            pcall(function() tid = plr.Character:GetAttribute("Team") end)
-        end
+        if tid == nil then pcall(function() tid = plr.Character:GetAttribute("Team") end) end
     end
     if tid == nil and FighterController and FighterController.Objects then
         pcall(function()
@@ -1254,110 +1115,29 @@ function getPlayerTeamId(plr)
             end
         end)
     end
-    if tid == nil and SpectateController then
-        pcall(function()
-            local duel = SpectateController.CurrentDuelSubject
-            if not duel or not duel.GetDueler then return end
-            local dueler = duel:GetDueler(plr)
-            if dueler then tid = dueler:Get("TeamID") end
-        end)
-    end
     if tid == nil and plr.Team then tid = plr.Team.Name end
-    if tid == nil and plr.TeamColor then tid = tostring(plr.TeamColor) end
     if tid == nil then return nil end
     return tostring(tid)
 end
 
-function IsRivalsBot(plr)
-    if not plr then return true end
-    local ok, a = pcall(function()
-        return plr:GetAttribute("IsBot") or plr:GetAttribute("Bot") or plr:GetAttribute("IsNPC") or plr:GetAttribute("NPC")
-    end)
-    if ok and a then return true end
-    local name = string.lower(tostring(plr.Name or ""))
-    local disp = string.lower(tostring(plr.DisplayName or ""))
-    if name:find("bot", 1, true) or disp:find("bot", 1, true) then return true end
-    if name:find("npc", 1, true) or disp:find("npc", 1, true) then return true end
-    if typeof(plr.UserId) == "number" and plr.UserId <= 0 then return true end
-    return false
-end
-
-local _ShakoTeamCache, _ShakoTeamCacheT = {}, {}
-pcall(function()
-    Players.PlayerRemoving:Connect(function(plr)
-        _ShakoTeamCache[plr.UserId] = nil
-        _ShakoTeamCacheT[plr.UserId] = nil
-    end)
-end)
-function _StrongIsTeammateRaw(plr)
+function StrongIsTeammate(plr)
     if not plr or plr == LocalPlayer then return true end
     local okT, sameT = pcall(function()
         local a, b = LocalPlayer.Team, plr.Team
-        if a ~= nil and b ~= nil then
-            return a == b or (a.Name and b.Name and a.Name == b.Name)
-        end
+        if a ~= nil and b ~= nil then return a == b end
         return nil
     end)
     if okT and sameT == true then return true end
-    if okT and sameT == false then return false end
-    local okC, sameC = pcall(function()
-        local ac, bc = LocalPlayer.TeamColor, plr.TeamColor
-        if ac and bc then
-            if ac == bc then return true end
-            return false
-        end
-        return nil
-    end)
-    if okC and sameC == true then
-        local ac, bc = LocalPlayer.TeamColor, plr.TeamColor
-        local an, bn = tostring(ac), tostring(bc)
-        if an ~= "White" and bn ~= "White" and an ~= "Medium stone grey" then return true end
-    end
-    local function readTid(p)
-        if not p then return nil end
-        local tid = nil
-        pcall(function() tid = p:GetAttribute("TeamID") end)
-        if tid == nil then pcall(function() tid = p:GetAttribute("Team") end) end
-        if tid == nil then pcall(function() tid = p:GetAttribute("TeamId") end) end
-        if tid == nil and p.Character then
-            local c = p.Character
-            pcall(function() tid = c:GetAttribute("TeamID") end)
-            if tid == nil then pcall(function() tid = c:GetAttribute("Team") end) end
-        end
-        return tid
-    end
-    local function norm(t)
-        if t == nil then return nil end
-        local x = tostring(t)
-        if x == "" or x == "nil" or x == "0" or x == "FFA" or x == "None" or x == "null" then return nil end
-        return x
-    end
-    local lt, pt = norm(readTid(LocalPlayer)), norm(readTid(plr))
-    if lt and pt then return lt == pt end
+    local lt, pt = nil, nil
+    pcall(function() lt = LocalPlayer:GetAttribute("TeamID") end)
+    pcall(function() pt = plr:GetAttribute("TeamID") end)
+    if lt ~= nil and pt ~= nil then return lt == pt end
     if type(getPlayerTeamId) == "function" then
-        local a = norm(getPlayerTeamId(LocalPlayer))
-        local b = norm(getPlayerTeamId(plr))
+        local a = getPlayerTeamId(LocalPlayer)
+        local b = getPlayerTeamId(plr)
         if a and b then return a == b end
     end
-    local isMate = false
-    pcall(function()
-        if plr.Character and plr.Character:FindFirstChild("TeammateLabel") then isMate = true end
-    end)
-    if isMate then return true end
     return false
-end
-function StrongIsTeammate(plr)
-    if not plr or plr == LocalPlayer then return true end
-    local uid = plr.UserId
-    local now = os.clock()
-    local t = _ShakoTeamCacheT[uid]
-    if t and (now - t) < 0.45 and _ShakoTeamCache[uid] ~= nil then
-        return _ShakoTeamCache[uid]
-    end
-    local r = _StrongIsTeammateRaw(plr)
-    _ShakoTeamCache[uid] = r
-    _ShakoTeamCacheT[uid] = now
-    return r
 end
 function IsSameTeam(plr) return StrongIsTeammate(plr) end
 
@@ -1365,33 +1145,21 @@ function IsEnemy(plr)
     if not plr or plr == LocalPlayer then return false end
     if not plr.Character then return false end
     if config.TeamCheck == false and config.AimbotTeamCheck ~= true then return true end
-    if StrongIsTeammate and StrongIsTeammate(plr) then return false end
+    if StrongIsTeammate(plr) then return false end
     return true
 end
 
-function CanDoDangerousMove()
-    if CanMove then return true end
-    local delay = tonumber(config.SpawnDelay) or 0
-    if delay <= 0 then return true end
-    return (tick() - (SpawnTime or 0)) >= delay
-end
 function IsAntiUnnamedActive() return false end
-function LookAtPos(pos) end
 function ResetCameraNormal() end
-function EnsureCameraFree() end
 
 -- ==================== WORLD VISUALS ====================
 local CC = Lighting:FindFirstChild("SleepyCC") or Instance.new("ColorCorrectionEffect")
 CC.Name = "SleepyCC"
 CC.Parent = Lighting
 local BloomFX = Lighting:FindFirstChild("SleepyBloom") or Instance.new("BloomEffect")
-BloomFX.Name = "SleepyBloom"
-BloomFX.Enabled = false
-BloomFX.Parent = Lighting
+BloomFX.Name = "SleepyBloom"; BloomFX.Enabled = false; BloomFX.Parent = Lighting
 local BlurFX = Lighting:FindFirstChild("SleepyBlur") or Instance.new("BlurEffect")
-BlurFX.Name = "SleepyBlur"
-BlurFX.Enabled = false
-BlurFX.Parent = Lighting
+BlurFX.Name = "SleepyBlur"; BlurFX.Enabled = false; BlurFX.Parent = Lighting
 
 local oldLighting = {
     Brightness = Lighting.Brightness,
@@ -1403,9 +1171,9 @@ local oldLighting = {
     FogEnd = Lighting.FogEnd
 }
 
-local _wallCache = _wallCache or {}
-local _mapColorCache = _mapColorCache or {}
-local _xrayCache = _xrayCache or {}
+local _wallCache = {}
+local _mapColorCache = {}
+local _xrayCache = {}
 
 local function _mapRoots()
     local roots = {}
@@ -1481,11 +1249,6 @@ local function applyXRay(on)
         for _, root in ipairs(_mapRoots()) do
             for _, obj in ipairs(root:GetDescendants()) do touch(obj) end
         end
-        if count < 30 then
-            for _, obj in ipairs(workspace:GetDescendants()) do
-                if obj:IsA("BasePart") and obj.Anchored then touch(obj) end
-            end
-        end
     else
         for obj, orig in pairs(_xrayCache) do
             if obj and obj.Parent then
@@ -1503,11 +1266,7 @@ local function applyMapColor(on)
         table.clear(_mapColorCache)
         return
     end
-    local c = Color3.fromRGB(
-        tonumber(config.MapColorR) or 80,
-        tonumber(config.MapColorG) or 80,
-        tonumber(config.MapColorB) or 100
-    )
+    local c = Color3.fromRGB(tonumber(config.MapColorR) or 80, tonumber(config.MapColorG) or 80, tonumber(config.MapColorB) or 100)
     local count = 0
     for _, root in ipairs(_mapRoots()) do
         for _, obj in ipairs(root:GetDescendants()) do
@@ -1547,41 +1306,9 @@ function ApplyVisuals()
             Lighting.Brightness = tonumber(config.Brightness) or 2
             Lighting.ExposureCompensation = tonumber(config.Exposure) or 0
             Lighting.ClockTime = tonumber(config.ClockTime) or 14
-            Lighting.Ambient = Color3.fromRGB(
-                tonumber(config.AmbientR) or 120,
-                tonumber(config.AmbientG) or 120,
-                tonumber(config.AmbientB) or 140
-            )
-            Lighting.OutdoorAmbient = Color3.fromRGB(
-                tonumber(config.OutdoorR) or 140,
-                tonumber(config.OutdoorG) or 140,
-                tonumber(config.OutdoorB) or 160
-            )
-            if config.GlobalShadows ~= nil then
-                Lighting.GlobalShadows = config.GlobalShadows and true or false
-            end
-            pcall(function()
-                Lighting.EnvironmentDiffuseScale = tonumber(config.EnvironmentDiffuse) or 1
-                Lighting.EnvironmentSpecularScale = tonumber(config.EnvironmentSpecular) or 1
-            end)
+            if config.GlobalShadows ~= nil then Lighting.GlobalShadows = config.GlobalShadows and true or false end
         else
-            if not config.Fullbright then
-                Lighting.Brightness = tonumber(config.Brightness) or oldLighting.Brightness
-                Lighting.ExposureCompensation = tonumber(config.Exposure) or oldLighting.ExposureCompensation
-                Lighting.ClockTime = tonumber(config.ClockTime) or oldLighting.ClockTime
-            end
-            if config.AmbientColor then
-                Lighting.Ambient = Color3.fromRGB(
-                    tonumber(config.AmbientR) or 120,
-                    tonumber(config.AmbientG) or 120,
-                    tonumber(config.AmbientB) or 140
-                )
-                Lighting.OutdoorAmbient = Color3.fromRGB(
-                    tonumber(config.OutdoorR) or 140,
-                    tonumber(config.OutdoorG) or 140,
-                    tonumber(config.OutdoorB) or 160
-                )
-            end
+            Lighting.Brightness = tonumber(config.Brightness) or oldLighting.Brightness
         end
         if config.NoFog then
             Lighting.FogStart = 1e9
@@ -1594,25 +1321,9 @@ function ApplyVisuals()
         CC.Enabled = true
         CC.Saturation = tonumber(config.Saturation) or 0
         CC.Contrast = tonumber(config.Contrast) or 0
-        if config.TintEnabled then
-            CC.TintColor = Color3.fromRGB(
-                tonumber(config.TintR) or 255,
-                tonumber(config.TintG) or 255,
-                tonumber(config.TintB) or 255
-            )
-        else
-            CC.TintColor = Color3.new(1, 1, 1)
-        end
-        if config.ColorShiftEnabled then
-            pcall(function()
-                Lighting.ColorShift_Top = Color3.fromRGB(
-                    tonumber(config.ColorShiftR) or 0,
-                    tonumber(config.ColorShiftG) or 0,
-                    tonumber(config.ColorShiftB) or 0
-                )
-                Lighting.ColorShift_Bottom = Lighting.ColorShift_Top
-            end)
-        end
+        CC.TintColor = config.TintEnabled
+            and Color3.fromRGB(tonumber(config.TintR) or 255, tonumber(config.TintG) or 255, tonumber(config.TintB) or 255)
+            or Color3.new(1, 1, 1)
         BloomFX.Enabled = config.BloomEnabled and true or false
         BloomFX.Intensity = tonumber(config.BloomIntensity) or 0.4
         BlurFX.Enabled = config.BlurEnabled and true or false
@@ -1634,10 +1345,6 @@ function ResetVisuals()
         Lighting.FogStart = oldLighting.FogStart
         Lighting.FogEnd = oldLighting.FogEnd
         Lighting.GlobalShadows = true
-        pcall(function()
-            Lighting.ColorShift_Top = Color3.new(0, 0, 0)
-            Lighting.ColorShift_Bottom = Color3.new(0, 0, 0)
-        end)
     end)
     CC.Enabled = false
     CC.TintColor = Color3.new(1, 1, 1)
@@ -1649,10 +1356,9 @@ function ResetVisuals()
     pcall(function() applyWallXray(false) end)
     pcall(function() applyMapColor(false) end)
     pcall(function() applyXRay(false) end)
-    pcall(ResetCameraNormal)
 end
 
--- ==================== DEFLECTION (para ESP) ====================
+-- ==================== DEFLECTION ====================
 local deflecting = {}
 Players.PlayerRemoving:Connect(function(p) deflecting[p] = nil end)
 function updateDeflection()
@@ -1660,23 +1366,20 @@ function updateDeflection()
     for _, fighterObj in pairs(FighterController.Objects) do
         local player = fighterObj.Player
         if player then
-            if not fighterObj.Entity or not fighterObj.Entity:IsAlive() or fighterObj:Get("IsSpectating") then
+            if not fighterObj.Entity or not fighterObj.Entity:IsAlive() then
                 deflecting[player] = false
             else
                 local equipped = fighterObj.EquippedItem
                 local isKatana = equipped and equipped.ViewModel and equipped.ViewModel.Name == "Katana"
-                local isDeflecting = false
-                if isKatana then
-                    isDeflecting = (equipped._attack_cooldown and equipped._attack_cooldown > tick()) or false
-                end
-                deflecting[player] = isDeflecting
+                local d = false
+                if isKatana then d = (equipped._attack_cooldown and equipped._attack_cooldown > tick()) or false end
+                deflecting[player] = d
             end
         end
     end
 end
 function isDeflecting(plr) return deflecting[plr] == true end
 
--- ==================== ITEM FIRE (helper) ====================
 function targetHasShield(char)
     if not char then return true end
     if char:FindFirstChildOfClass("ForceField") then return true end
@@ -1687,43 +1390,14 @@ function targetHasShield(char)
     return false
 end
 
-function fireRageUseItem(item, desyncCF, targetHead, targetRoot)
-    if not util or not enum or not item then return end
-    if targetHead and targetHead.Parent and targetHasShield(targetHead.Parent) then return end
-    local originPos = desyncCF and desyncCF.Position or targetRoot.Position
-    local targetPos = targetHead.Position
-    local aimCF = CFrame.lookAt(originPos, targetPos)
-    local targetCF = targetHead.CFrame
-    local objSpaceHeadOffset = targetCF:ToObjectSpace(CFrame.new(targetPos))
-    local cameradata = {}
-    cameradata[utf8.char(1)] = {
-        [utf8.char(0)] = util:EncodeCFrame(aimCF),
-        [utf8.char(1)] = util:EncodeCFrame(targetCF),
-        [utf8.char(2)] = targetHead,
-        [utf8.char(3)] = util:EncodeCFrame(objSpaceHeadOffset)
-    }
-    pcall(function()
-        RS.Remotes.Replication.Fighter.UseItem:FireServer(
-            item:Get("ObjectID"),
-            enum:ToEnum("StartShooting"),
-            cameradata,
-            nil
-        )
-    end)
-end
-
 -- ==================== SILENT AIM + FOV ====================
-local StartSilentAim, StopSilentAim, StartFOVDraw, silentTarget, silentCFD, loadSilentDeps, updateFOVCircle, fovColor, isVisibleWall
+local StartSilentAim, StopSilentAim, StartFOVDraw, silentTarget, silentCFD, loadSilentDeps, fovColor
 function InitCombatHooks()
 local FOV_COLORS = {
-    White = Color3.fromRGB(255, 255, 255),
-    Red = Color3.fromRGB(255, 70, 80),
-    Green = Color3.fromRGB(80, 255, 140),
-    Cyan = Color3.fromRGB(80, 220, 255),
-    Magenta = Color3.fromRGB(255, 100, 220),
-    Yellow = Color3.fromRGB(255, 230, 80),
-    Orange = Color3.fromRGB(255, 160, 50),
-    Purple = Color3.fromRGB(168, 85, 255),
+    White = Color3.fromRGB(255, 255, 255), Red = Color3.fromRGB(255, 70, 80),
+    Green = Color3.fromRGB(80, 255, 140), Cyan = Color3.fromRGB(80, 220, 255),
+    Magenta = Color3.fromRGB(255, 100, 220), Yellow = Color3.fromRGB(255, 230, 80),
+    Orange = Color3.fromRGB(255, 160, 50), Purple = Color3.fromRGB(168, 85, 255),
 }
 fovColor = function(name)
     if typeof(name) == "Color3" then return name end
@@ -1789,14 +1463,10 @@ function buildGriefFOV(name, cfg)
     return { container = container, fill = fill, fillgrad = fillgrad, stroke = stroke, strokegrad = strokegrad }
 end
 
-local silentFOVUI = buildGriefFOV("SilentFOV", {
-    fillTrans = 0.92, thickness = 1.5,
-    col1 = Color3.fromRGB(255,255,255), col2 = Color3.fromRGB(180,200,255),
-})
-local aimbotFOVUI = buildGriefFOV("AimbotFOV", {
-    fillTrans = 0.94, thickness = 1.5,
-    col1 = Color3.fromRGB(255,210,80), col2 = Color3.fromRGB(255,120,50),
-})
+local silentFOVUI = buildGriefFOV("SilentFOV", { fillTrans = 0.92, thickness = 1.5,
+    col1 = Color3.fromRGB(255,255,255), col2 = Color3.fromRGB(180,200,255) })
+local aimbotFOVUI = buildGriefFOV("AimbotFOV", { fillTrans = 0.94, thickness = 1.5,
+    col1 = Color3.fromRGB(255,210,80), col2 = Color3.fromRGB(255,120,50) })
 
 function applyFOVUI(ui, enabled, show, radius, colName, doFill, fillTrans, animated, spin, outlineCol, fillC1, fillC2, fillC3)
     if not ui or not ui.container then return end
@@ -1805,25 +1475,19 @@ function applyFOVUI(ui, enabled, show, radius, colName, doFill, fillTrans, anima
     local vis = enabled and show
     ui.container.Visible = vis and true or false
     if not vis then return end
-
     local col = outlineCol
     if typeof(col) ~= "Color3" then col = fovColor(colName) end
     local c1 = (typeof(fillC1) == "Color3" and fillC1) or col
-    local c2 = (typeof(fillC2) == "Color3" and fillC2) or Color3.new(
-        math.clamp(col.R * 0.7 + 0.15, 0, 1), math.clamp(col.G * 0.7 + 0.15, 0, 1), math.clamp(col.B * 0.85 + 0.2, 0, 1))
-    local c3 = (typeof(fillC3) == "Color3" and fillC3) or Color3.new(
-        math.clamp(col.R * 0.45 + 0.1, 0, 1), math.clamp(col.G * 0.45 + 0.1, 0, 1), math.clamp(col.B * 0.7 + 0.25, 0, 1))
-
+    local c2 = (typeof(fillC2) == "Color3" and fillC2) or col
+    local c3 = (typeof(fillC3) == "Color3" and fillC3) or col
     local r = tonumber(radius) or 120
     if animated then r = r * (0.97 + 0.03 * math.sin(tick() * 2.2)) end
     local center = cam.ViewportSize / 2
     ui.container.Position = UDim2.fromOffset(center.X, center.Y)
     ui.container.Size = UDim2.fromOffset(r * 2, r * 2)
-
     if ui.fill then
         ui.fill.Visible = doFill and true or false
         ui.fill.BackgroundTransparency = tonumber(fillTrans) or 0.92
-        ui.fill.BackgroundColor3 = Color3.new(1, 1, 1)
         if ui.fillgrad then
             pcall(function()
                 ui.fillgrad.Color = ColorSequence.new({
@@ -1831,32 +1495,19 @@ function applyFOVUI(ui, enabled, show, radius, colName, doFill, fillTrans, anima
                     ColorSequenceKeypoint.new(0.5, c2),
                     ColorSequenceKeypoint.new(1, c3),
                 })
-                if spin then
-                    ui.fillgrad.Rotation = (tick() * (tonumber(config.SilentFOVSpinSpeed) or 1.2) * 60) % 360
-                end
+                if spin then ui.fillgrad.Rotation = (tick() * (tonumber(config.SilentFOVSpinSpeed) or 1.2) * 60) % 360 end
             end)
         end
     end
     if ui.stroke then
         ui.stroke.Color = col
         ui.stroke.Thickness = tonumber(config.SilentFOVThickness) or 1.5
-        if ui.strokegrad then
-            pcall(function()
-                ui.strokegrad.Color = ColorSequence.new(col, col)
-                if spin then
-                    ui.strokegrad.Rotation = (tick() * (tonumber(config.SilentFOVSpinSpeed) or 1.2) * 90) % 360
-                end
-            end)
-        end
     end
 end
 
 StartFOVDraw = function()
     SafeDisconnect("FOVDraw")
-    local fovFrame = 0
     Connections.FOVDraw = RunService.Heartbeat:Connect(function()
-        fovFrame += 1
-        if fovFrame % 5 ~= 0 then return end
         local sOn = config.SilentAimEnabled and config.SilentShowFOV ~= false
         local aOn = config.AimbotEnabled and config.AimbotShowFOV ~= false
         if not sOn and not aOn then
@@ -1864,12 +1515,8 @@ StartFOVDraw = function()
             if aimbotFOVUI and aimbotFOVUI.container then aimbotFOVUI.container.Visible = false end
             return
         end
-        fovFrame = fovFrame + 1
-        local needFast = (sOn and (config.SilentFOVAnimated or config.SilentFOVSpin)) or (aOn and (config.AimbotFOVAnimated or config.AimbotFOVSpin))
-        if not needFast and fovFrame % 2 == 0 then return end
         if sOn then
-            applyFOVUI(silentFOVUI, true, true,
-                config.SilentFOV or 300, config.SilentFOVColor or "White",
+            applyFOVUI(silentFOVUI, true, true, config.SilentFOV or 300, config.SilentFOVColor or "White",
                 config.SilentFOVFill == true, config.SilentFOVFillTransparency,
                 config.SilentFOVAnimated, config.SilentFOVSpin == true,
                 config.SilentFOVOutlineColor3, config.SilentFOVFillC1, config.SilentFOVFillC2, config.SilentFOVFillC3)
@@ -1877,10 +1524,9 @@ StartFOVDraw = function()
             if silentFOVUI and silentFOVUI.container then silentFOVUI.container.Visible = false end
         end
         if aOn then
-            applyFOVUI(aimbotFOVUI, true, true,
-                config.AimbotFOV or 180, config.AimbotFOVColor or "Yellow",
+            applyFOVUI(aimbotFOVUI, true, true, config.AimbotFOV or 180, config.AimbotFOVColor or "Yellow",
                 config.AimbotFOVFill == true, config.AimbotFOVFillTransparency,
-                config.AimbotFOVAnimated, config.AimbotFOVSpin == true,
+                config.AimbotFOVAnimated, false,
                 config.AimbotFOVOutlineColor3, config.AimbotFOVFillC1, config.AimbotFOVFillC2, config.AimbotFOVFillC3)
         else
             if aimbotFOVUI and aimbotFOVUI.container then aimbotFOVUI.container.Visible = false end
@@ -1889,28 +1535,7 @@ StartFOVDraw = function()
 end
 StartFOVDraw()
 
-isVisibleWall = function(fromPos, toPos, targetChar)
-    local params = RaycastParams.new()
-    params.FilterType = Enum.RaycastFilterType.Exclude
-    local filter = { LocalPlayer.Character }
-    if targetChar then table.insert(filter, targetChar) end
-    params.FilterDescendantsInstances = filter
-    params.IgnoreWater = true
-    local res = workspace:Raycast(fromPos, toPos - fromPos, params)
-    return res == nil
-end
-
--- ==================== SILENT AIM (Kicia method) ====================
-local GameplayUtility, GunModule
-local silentHooked = false
-local silentOldFire, silentOldRaycast, silentOldNamecall
-
 loadSilentDeps = function()
-    pcall(function() GameplayUtility = require(RS.Modules.GameplayUtility) end)
-    pcall(function()
-        local ok, gun = pcall(require, LocalPlayer.PlayerScripts.Modules.ItemTypes.Gun)
-        if ok and gun then GunModule = gun end
-    end)
     if not util or not enum then pcall(loadRivalsModules) end
 end
 task.spawn(loadSilentDeps)
@@ -1926,18 +1551,6 @@ silentTarget = function()
     local myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
     local myPos = myRoot and myRoot.Position or cam.CFrame.Position
 
-    local function wallClear(fromPos, toPos, ignoreChar)
-        if not config.SilentWallCheck and not config.SilentVisibleCheck then return true end
-        local params = RaycastParams.new()
-        params.FilterType = Enum.RaycastFilterType.Exclude
-        local ignore = { LocalPlayer.Character }
-        if ignoreChar then table.insert(ignore, ignoreChar) end
-        params.FilterDescendantsInstances = ignore
-        local hit = workspace:Raycast(fromPos, toPos - fromPos, params)
-        if not hit then return true end
-        return hit.Instance and ignoreChar and hit.Instance:IsDescendantOf(ignoreChar)
-    end
-
     local function getHitPart(char)
         if not char then return nil end
         local want = tostring(config.SilentHitPart or "Head")
@@ -1946,14 +1559,9 @@ silentTarget = function()
             if hb then return hb end
         end
         if want == "Torso" then
-            return char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso")
-                or char:FindFirstChild("HitboxBody") or char:FindFirstChild("HumanoidRootPart")
+            return char:FindFirstChild("UpperTorso") or char:FindFirstChild("Torso") or char:FindFirstChild("HitboxBody")
         end
-        if want == "HitboxHead" then
-            return char:FindFirstChild("HitboxHead") or char:FindFirstChild("HitboxHeadSmall") or char:FindFirstChild("Head")
-        end
-        return char:FindFirstChild(want) or char:FindFirstChild("Head")
-            or char:FindFirstChild("HitboxBody") or char:FindFirstChild("HumanoidRootPart")
+        return char:FindFirstChild(want) or char:FindFirstChild("Head") or char:FindFirstChild("HumanoidRootPart")
     end
 
     local function tryPart(char)
@@ -1962,27 +1570,18 @@ silentTarget = function()
         if not hum or hum.Health <= 0 then return end
         local part = getHitPart(char)
         if not part then return end
-        local sp, onScreen = cam:WorldToViewportPoint(part.Position)
+        local sp = cam:WorldToViewportPoint(part.Position)
         if sp.Z <= 0 then return end
         local d = (Vector2.new(sp.X, sp.Y) - Vector2.new(center.X, center.Y)).Magnitude
         if d > fov then return end
-        if not wallClear(myPos, part.Position, char) then return end
         if d < bestDist then bestDist, bestHead = d, part end
     end
 
     for _, plr in ipairs(Players:GetPlayers()) do
         if plr == LocalPlayer then continue end
-        if config.SilentTeamCheck ~= false and StrongIsTeammate and StrongIsTeammate(plr) then continue end
+        if config.SilentTeamCheck ~= false and StrongIsTeammate(plr) then continue end
         tryPart(plr.Character)
     end
-    pcall(function()
-        for _, entity in ipairs(game:GetService("CollectionService"):GetTagged("Entity")) do
-            local plr = Players:GetPlayerFromCharacter(entity)
-            if plr == LocalPlayer then continue end
-            if plr and config.SilentTeamCheck and IsEnemy and not IsEnemy(plr) then continue end
-            tryPart(entity)
-        end
-    end)
     return bestHead
 end
 
@@ -1997,10 +1596,6 @@ function silentPredictPos(head, origin)
     if vel.Magnitude < 4 then return pos end
     local vFlat = Vector3.new(vel.X, vel.Y * 0.35, vel.Z)
     local t = math.clamp(tonumber(config.SilentPredictAmount) or 0.08, 0, 0.35)
-    if origin then
-        local dist = (pos - origin).Magnitude
-        t = t + math.clamp(dist / 2200, 0, 0.08)
-    end
     return pos + vFlat * t
 end
 
@@ -2011,31 +1606,19 @@ local function kiciaEncodeCF(cf)
         if ok and enc ~= nil then return enc end
     end
     local rx, ry, rz = cf:ToOrientation()
-    return {
-        [utf8.char(0)] = cf.X, [utf8.char(1)] = cf.Y, [utf8.char(2)] = cf.Z,
-        [utf8.char(3)] = rx, [utf8.char(4)] = ry, [utf8.char(5)] = rz,
-    }
+    return { [utf8.char(0)] = cf.X, [utf8.char(1)] = cf.Y, [utf8.char(2)] = cf.Z,
+             [utf8.char(3)] = rx, [utf8.char(4)] = ry, [utf8.char(5)] = rz }
 end
-
 local function kiciaDecodeCF(t)
     if type(t) ~= "table" then return nil end
     if util and util.DecodeCFrame then
         local ok, cf = pcall(function() return util:DecodeCFrame(t) end)
         if ok and typeof(cf) == "CFrame" then return cf end
     end
-    local x = t[utf8.char(0)] or t[0]
-    local y = t[utf8.char(1)] or t[1]
-    local z = t[utf8.char(2)] or t[2]
-    local rx = t[utf8.char(3)] or t[3]
-    local ry = t[utf8.char(4)] or t[4]
-    local rz = t[utf8.char(5)] or t[5]
+    local x, y, z = t[utf8.char(0)] or t[0], t[utf8.char(1)] or t[1], t[utf8.char(2)] or t[2]
     if type(x) ~= "number" or type(y) ~= "number" or type(z) ~= "number" then return nil end
-    rx = type(rx) == "number" and rx or 0
-    ry = type(ry) == "number" and ry or 0
-    rz = type(rz) == "number" and rz or 0
-    return CFrame.new(x, y, z) * CFrame.fromOrientation(rx, ry, rz)
+    return CFrame.new(x, y, z)
 end
-
 local function kiciaObjectSpace(origin, hitbox, aimPos)
     if not origin or not hitbox or not aimPos then return nil end
     local params = RaycastParams.new()
@@ -2059,14 +1642,12 @@ silentCFD = function(origin, head)
     if not head or not origin then return nil end
     local aimPos = head.Position
     local os = kiciaObjectSpace(origin, head, aimPos) or Vector3.new(0, 0, 0)
-    return {
-        [utf8.char(1)] = {
-            [utf8.char(0)] = kiciaEncodeCF(CFrame.lookAt(origin, aimPos)),
-            [utf8.char(1)] = kiciaEncodeCF(head.CFrame),
-            [utf8.char(2)] = head,
-            [utf8.char(3)] = kiciaEncodeCF(CFrame.new(os)),
-        }
-    }
+    return { [utf8.char(1)] = {
+        [utf8.char(0)] = kiciaEncodeCF(CFrame.lookAt(origin, aimPos)),
+        [utf8.char(1)] = kiciaEncodeCF(head.CFrame),
+        [utf8.char(2)] = head,
+        [utf8.char(3)] = kiciaEncodeCF(CFrame.new(os)),
+    } }
 end
 
 function silentIsStartShooting(enumVal)
@@ -2079,44 +1660,29 @@ function silentIsStartShooting(enumVal)
     return false
 end
 
--- Extend melee range (parte del aim/silent)
-local MELEE_NAMES = {
-    knife=true, fists=true, katana=true, scythe=true, chainsaw=true,
-    trowel=true, daggers=true, dagger=true, ["battle axe"]=true,
-    ["glass shard"]=true, ["riot shield"]=true, fist=true, axe=true,
-    sword=true, bat=true, hammer=true, melee=true,
-}
+local MELEE_NAMES = { knife=true, fists=true, katana=true, scythe=true, chainsaw=true,
+    trowel=true, daggers=true, dagger=true, sword=true, bat=true, hammer=true, axe=true, melee=true }
 local function kiciaCFEncode(cf)
     local p, y, r = cf:ToOrientation()
-    return {
-        [utf8.char(0)] = cf.X, [utf8.char(1)] = cf.Y, [utf8.char(2)] = cf.Z,
-        [utf8.char(3)] = p, [utf8.char(4)] = y, [utf8.char(5)] = r,
-    }
+    return { [utf8.char(0)] = cf.X, [utf8.char(1)] = cf.Y, [utf8.char(2)] = cf.Z,
+             [utf8.char(3)] = p, [utf8.char(4)] = y, [utf8.char(5)] = r }
 end
 local function kiciaCFDecode(t)
     if type(t) ~= "table" then return nil end
     local x, y, z = t[utf8.char(0)], t[utf8.char(1)], t[utf8.char(2)]
-    local p, yw, r = t[utf8.char(3)], t[utf8.char(4)], t[utf8.char(5)]
     if type(x) ~= "number" or type(y) ~= "number" or type(z) ~= "number" then return nil end
-    return CFrame.new(x, y, z) * CFrame.fromOrientation(p or 0, yw or 0, r or 0)
+    return CFrame.new(x, y, z)
 end
 function isMeleeEquipped()
     local ok, res = pcall(function()
         if not FighterController then
-            pcall(function()
-                FighterController = require(LocalPlayer.PlayerScripts.Controllers.FighterController)
-            end)
+            pcall(function() FighterController = require(LocalPlayer.PlayerScripts.Controllers.FighterController) end)
         end
         local lf = FighterController and FighterController.LocalFighter
         if not lf then return false end
-        local slot = nil
-        pcall(function() slot = lf.EquippedSlot or lf.Slot end)
-        if slot == 3 or slot == "Melee" or tostring(slot) == "3" then return true end
         local item = lf.EquippedItem
         if not item then return false end
-        local name = ""
-        pcall(function() name = tostring(item.Name or "") end)
-        name = string.lower(name)
+        local name = string.lower(tostring(item.Name or ""))
         if MELEE_NAMES[name] then return true end
         for k in pairs(MELEE_NAMES) do
             if string.find(name, k, 1, true) then return true end
@@ -2125,34 +1691,11 @@ function isMeleeEquipped()
     end)
     return ok and res == true
 end
-function findClosestEnemyRootMelee(origin, range)
-    local best, bestD = nil, range
-    for _, plr in ipairs(Players:GetPlayers()) do
-        if plr ~= LocalPlayer then
-            local skip = false
-            pcall(function()
-                if config.TeamCheck and type(IsSameTeam) == "function" and IsSameTeam(plr) then skip = true end
-            end)
-            if not skip then
-                local char = plr.Character
-                local hum = char and char:FindFirstChildOfClass("Humanoid")
-                local hrp = char and char:FindFirstChild("HumanoidRootPart")
-                if hum and hrp and hum.Health > 0 then
-                    local d = (hrp.Position - origin).Magnitude
-                    if d <= bestD then bestD, best = d, hrp end
-                end
-            end
-        end
-    end
-    return best
-end
 function applyExtendMelee(camdata)
     if not config.ExtendMeleeRange then return camdata end
     if not isMeleeEquipped() then return camdata end
     if type(camdata) ~= "table" then return camdata end
-    local range = tonumber(config.ExtendMeleeRangeDist) or 10
-    if range < 5 then range = 5 end
-    if range > 20 then range = 20 end
+    local range = math.clamp(tonumber(config.ExtendMeleeRangeDist) or 10, 5, 20)
     local k1, k0 = utf8.char(1), utf8.char(0)
     local block = camdata[k1]
     if type(block) ~= "table" then
@@ -2160,8 +1703,7 @@ function applyExtendMelee(camdata)
     end
     local raw = block[k0]
     local origin = nil
-    local useTable = type(raw) == "table" and type(raw[k0]) == "number"
-    if useTable then
+    if type(raw) == "table" then
         local cf = kiciaCFDecode(raw)
         if cf then origin = cf.Position end
     end
@@ -2174,35 +1716,38 @@ function applyExtendMelee(camdata)
         if not my then return camdata end
         origin = my.Position
     end
-    local enemy = findClosestEnemyRootMelee(origin, range)
-    if not enemy then return camdata end
-    local aimCF = CFrame.new(enemy.Position) * CFrame.fromOrientation(-1.5707963267948966, 0, 0)
+    local best, bestD = nil, range
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= LocalPlayer and not StrongIsTeammate(plr) then
+            local char = plr.Character
+            local hum = char and char:FindFirstChildOfClass("Humanoid")
+            local hrp = char and char:FindFirstChild("HumanoidRootPart")
+            if hum and hrp and hum.Health > 0 then
+                local d = (hrp.Position - origin).Magnitude
+                if d <= bestD then bestD, best = d, hrp end
+            end
+        end
+    end
+    if not best then return camdata end
+    local aimCF = CFrame.new(best.Position) * CFrame.fromOrientation(-1.5707963267948966, 0, 0)
     local enc = kiciaCFEncode(aimCF)
     block[k0], block[k1] = enc, enc
     return camdata
 end
 
+local silentOldFire
 task.spawn(function()
     for _ = 1, 40 do
-        if silentOldFire then return end
-        local ok, UseItem = pcall(function()
-            return game:GetService("ReplicatedStorage").Remotes.Replication.Fighter.UseItem
-        end)
+        local ok, UseItem = pcall(function() return RS.Remotes.Replication.Fighter.UseItem end)
         if ok and UseItem and hookfunction then
             pcall(function()
                 silentOldFire = hookfunction(UseItem.FireServer, newcclosure(function(self, objID, enumVal, camdata, extra, ...)
-                    if config.ExtendMeleeRange and type(applyExtendMelee) == "function" then
+                    if config.ExtendMeleeRange then
                         local okM, patchedM = pcall(applyExtendMelee, camdata)
                         if okM and patchedM ~= nil then camdata = patchedM end
                     end
                     if config.SilentAimEnabled and getgenv()._ShakoSilentActive then
-                        local isShoot = false
-                        pcall(function()
-                            if type(silentIsStartShooting) == "function" then
-                                isShoot = silentIsStartShooting(enumVal) == true
-                            end
-                        end)
-                        if isShoot then
+                        if silentIsStartShooting(enumVal) then
                             local patchFn = getgenv()._ShakoSilentPatch
                             if type(patchFn) == "function" then
                                 local okP, patched = pcall(patchFn, camdata)
@@ -2222,73 +1767,30 @@ end)
 StartSilentAim = function()
     loadSilentDeps()
     if not util or not enum then
-        pcall(loadRivalsModules)
-        loadSilentDeps()
+        pcall(loadRivalsModules); loadSilentDeps()
     end
-    if not util or not enum then
-        Notify("Silent", "Modules no listos — reintenta")
-        return
-    end
-
-    getgenv()._ShakoSilentState = getgenv()._ShakoSilentState or { locked = nil, lockedAt = 0, lastSwitch = 0 }
-    local SState = getgenv()._ShakoSilentState
-
-    if config.SilentForceAiming then
-        pcall(function()
-            local ok, gun = pcall(require, LocalPlayer.PlayerScripts.Modules.ItemTypes.Gun)
-            if ok and gun and gun.IsFullyAiming then
-                gun.IsFullyAiming = function() return true end
-            end
-        end)
-    end
-
-    local function getSilentPart()
-        local t = silentTarget()
-        if not t then SState.locked = nil return nil end
-        local now = tick()
-        local switchDelay = tonumber(config.SilentSwitchDelay) or 0
-        local react = tonumber(config.SilentReactionTime) or 0
-        if SState.locked and SState.locked.Parent and switchDelay > 0 then
-            if (now - (SState.lastSwitch or 0)) < switchDelay then t = SState.locked end
-        end
-        if t ~= SState.locked then
-            SState.locked = t
-            SState.lockedAt = now
-            SState.lastSwitch = now
-        end
-        if react > 0 and (now - (SState.lockedAt or 0)) < react then return nil end
-        return t
-    end
+    if not util or not enum then Notify("Silent", "Modules no listos"); return end
 
     local function patchCamdata(camdata)
         if config.SilentManipulate == false then return camdata end
-        local chance = tonumber(config.SilentActivationChance) or 100
-        if chance < 100 and math.random() > (chance / 100) then return camdata end
-
         local ok, result = pcall(function()
-            local hitbox = getSilentPart()
+            local hitbox = silentTarget()
             if not hitbox then return camdata end
             if type(camdata) ~= "table" then return camdata end
-            local key = utf8.char(1)
-            local entry = camdata[key]
+            local entry = camdata[utf8.char(1)]
             if type(entry) ~= "table" then
                 local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
                 if not root then return camdata end
                 return silentCFD(root.Position, hitbox) or camdata
             end
             local aim0 = kiciaDecodeCF(entry[utf8.char(0)])
-            local aim1 = kiciaDecodeCF(entry[utf8.char(1)])
-            local originPos
-            if aim0 then
-                originPos = aim0.Position
-            else
+            local originPos = aim0 and aim0.Position
+            if not originPos then
                 local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
                 originPos = root and root.Position
             end
             if not originPos then return camdata end
             local targetPos = hitbox.Position
-            local up = tonumber(config.SilentHeadOffsetY) or 0
-            if up ~= 0 then targetPos = targetPos + Vector3.new(0, up, 0) end
             if config.SilentPredict then
                 local pred = silentPredictPos(hitbox, originPos)
                 targetPos = Vector3.new(pred.X, targetPos.Y, pred.Z)
@@ -2296,11 +1798,7 @@ StartSilentAim = function()
             local os = kiciaObjectSpace(originPos, hitbox, targetPos)
             if not os then return camdata end
             entry[utf8.char(0)] = kiciaEncodeCF(CFrame.lookAt(originPos, targetPos))
-            if aim1 then
-                entry[utf8.char(1)] = kiciaEncodeCF(CFrame.lookAt(aim1.Position, targetPos))
-            else
-                entry[utf8.char(1)] = kiciaEncodeCF(hitbox.CFrame)
-            end
+            entry[utf8.char(1)] = kiciaEncodeCF(hitbox.CFrame)
             entry[utf8.char(2)] = hitbox
             entry[utf8.char(3)] = kiciaEncodeCF(CFrame.new(os))
             return camdata
@@ -2309,42 +1807,10 @@ StartSilentAim = function()
         return camdata
     end
 
-    local UseItem
-    pcall(function() UseItem = RS.Remotes.Replication.Fighter.UseItem end)
-
     getgenv()._ShakoSilentPatch = patchCamdata
     getgenv()._ShakoSilentActive = true
-
-    if UseItem and hookfunction and not silentOldFire then
-        pcall(function()
-            silentOldFire = hookfunction(UseItem.FireServer, newcclosure(function(self, objID, enumVal, camdata, extra, ...)
-                if config.ExtendMeleeRange and type(applyExtendMelee) == "function" then
-                    local okM, patchedM = pcall(applyExtendMelee, camdata)
-                    if okM and patchedM ~= nil then camdata = patchedM end
-                end
-                if config.SilentAimEnabled and getgenv()._ShakoSilentActive then
-                    local isShoot = false
-                    pcall(function()
-                        if type(silentIsStartShooting) == "function" then
-                            isShoot = silentIsStartShooting(enumVal) == true
-                        end
-                    end)
-                    if isShoot then
-                        local patchFn = getgenv()._ShakoSilentPatch
-                        if type(patchFn) == "function" then
-                            local ok, patched = pcall(patchFn, camdata)
-                            if ok and patched ~= nil then camdata = patched end
-                        end
-                    end
-                end
-                return silentOldFire(self, objID, enumVal, camdata, extra, ...)
-            end))
-        end)
-    end
-
-    silentHooked = true
     config.SilentAimEnabled = true
-    Notify("Silent", "ON · Kicia method")
+    Notify("Silent", "ON")
 end
 
 StopSilentAim = function()
@@ -2354,20 +1820,16 @@ StopSilentAim = function()
     Notify("Silent", "OFF")
 end
 end -- InitCombatHooks
-
 InitCombatHooks()
 
 -- ==================== AIMBOT (cámara) ====================
-local aimbotHolding = false
-
 function AimbotIsEnemy(plr)
     if not plr or plr == LocalPlayer then return false end
     if not plr.Character then return false end
     local tc = config.AimbotTeamCheck
     if tc == nil then tc = true end
-    if config.TeamCheck == true then tc = true end
     if tc then
-        if StrongIsTeammate and StrongIsTeammate(plr) then return false end
+        if StrongIsTeammate(plr) then return false end
         local a, b = LocalPlayer.Team, plr.Team
         if a ~= nil and b ~= nil and a == b then return false end
     end
@@ -2405,27 +1867,30 @@ function GetAimbotTargetRivals()
     local bestPart, bestScore = nil, math.huge
     local camPos = cam.CFrame.Position
     for _, plr in pairs(Players:GetPlayers()) do
-        if plr == LocalPlayer then continue end
-        if not AimbotIsEnemy(plr) then continue end
-        local char = plr.Character
-        if not char then continue end
-        local head = char:FindFirstChild(partName) or char:FindFirstChild("Head")
-        local hum = char:FindFirstChildOfClass("Humanoid")
-        if not head or not hum or hum.Health <= 0 then continue end
-        local sp, onScreen = cam:WorldToViewportPoint(head.Position)
-        if sp.Z <= 0 then continue end
-        local screenDist = (Vector2.new(sp.X, sp.Y) - Vector2.new(center.X, center.Y)).Magnitude
-        if screenDist > fov then continue end
-        if config.AimbotWallCheck or config.AimbotVisibleCheck then
-            if not aimbotWallClear(camPos, head.Position, char) then continue end
+        if plr ~= LocalPlayer and AimbotIsEnemy(plr) then
+            local char = plr.Character
+            if char then
+                local head = char:FindFirstChild(partName) or char:FindFirstChild("Head")
+                local hum = char:FindFirstChildOfClass("Humanoid")
+                if head and hum and hum.Health > 0 then
+                    local sp = cam:WorldToViewportPoint(head.Position)
+                    if sp.Z > 0 then
+                        local screenDist = (Vector2.new(sp.X, sp.Y) - Vector2.new(center.X, center.Y)).Magnitude
+                        if screenDist <= fov then
+                            if not (config.AimbotWallCheck or config.AimbotVisibleCheck)
+                               or aimbotWallClear(camPos, head.Position, char) then
+                                if screenDist < bestScore then bestScore, bestPart = screenDist, head end
+                            end
+                        end
+                    end
+                end
+            end
         end
-        if screenDist < bestScore then bestScore, bestPart = screenDist, head end
     end
     return bestPart
 end
 
 local StartAimbot, StopAimbot
-
 StartAimbot = function()
     SafeDisconnect("Aimbot")
     SafeDisconnect("AimbotInput")
@@ -2435,49 +1900,41 @@ StartAimbot = function()
     getgenv()._ShakoAimKB = st
     st.held = false
 
-    local function getKP()
-        local opts = Library and Library.Options
-        return opts and (opts.AimbotKey or opts["AimbotKey"]) or nil
-    end
     local function normKey(v)
         if v == nil then return nil end
         if typeof(v) == "EnumItem" then return v end
         if type(v) == "string" then
             local s = v:gsub("%s+", "")
-            if s == "" or s == "None" or s == "..." or s == "nil" then return nil end
+            if s == "" or s == "None" or s == "..." then return nil end
             local low = s:lower()
-            if low == "mb2" or low == "mousebutton2" or low == "mouse2" or low == "rightclick" then return Enum.UserInputType.MouseButton2 end
-            if low == "mb1" or low == "mousebutton1" or low == "mouse1" or low == "leftclick" then return Enum.UserInputType.MouseButton1 end
+            if low == "mb2" or low == "mousebutton2" then return Enum.UserInputType.MouseButton2 end
+            if low == "mb1" or low == "mousebutton1" then return Enum.UserInputType.MouseButton1 end
             local ok, e = pcall(function() return Enum.KeyCode[s] end)
-            if ok and e then return e end
-            ok, e = pcall(function() return Enum.UserInputType[s] end)
             if ok and e then return e end
         end
         return nil
     end
     local function getKey()
-        local kp = getKP()
+        local opts = Library and Library.Options
+        local kp = opts and (opts.AimbotKey or opts["AimbotKey"])
         if kp then
-            for _, field in ipairs({ "Value", "Key", "KeyCode", "Input", "Bind" }) do
-                local k = normKey(rawget and rawget(kp, field) or kp[field])
+            for _, f in ipairs({ "Value", "Key", "KeyCode", "Input" }) do
+                local k = normKey(kp[f])
                 if k then return k end
             end
         end
         return Enum.UserInputType.MouseButton2
     end
     local function getMode()
-        local cfg = tostring(config.AimbotKeyMode or ""):lower()
-        if cfg:find("always") then return "always" end
-        if cfg:find("toggle") then return "toggle" end
-        if cfg:find("hold") then return "hold" end
+        local c = tostring(config.AimbotKeyMode or ""):lower()
+        if c:find("always") then return "always" end
+        if c:find("toggle") then return "toggle" end
         return "hold"
     end
     local function physDown(key)
-        if not key then key = Enum.UserInputType.MouseButton2 end
+        if not key then return false end
         local ok, down = pcall(function()
-            if typeof(key) == "EnumItem" and key.EnumType == Enum.KeyCode then
-                return UserInputService:IsKeyDown(key)
-            end
+            if typeof(key) == "EnumItem" and key.EnumType == Enum.KeyCode then return UserInputService:IsKeyDown(key) end
             return UserInputService:IsMouseButtonPressed(key)
         end)
         return ok and down == true
@@ -2491,12 +1948,10 @@ StartAimbot = function()
     local function isAimActive()
         if not config.AimbotEnabled then return false end
         local mode = getMode()
-        local key = getKey()
         if mode == "always" then return true end
         if mode == "toggle" then return st.toggled == true end
         if st.held then return true end
-        if physDown(key) then return true end
-        return false
+        return physDown(getKey())
     end
 
     Connections.AimbotInput = UserInputService.InputBegan:Connect(function(input, gpe)
@@ -2505,79 +1960,53 @@ StartAimbot = function()
         if gpe and not isMouse then return end
         local key = getKey()
         local mode = getMode()
-        local hit = matches(input, key)
-            or (key == Enum.UserInputType.MouseButton2 and input.UserInputType == Enum.UserInputType.MouseButton2)
+        local hit = matches(input, key) or (key == Enum.UserInputType.MouseButton2 and input.UserInputType == Enum.UserInputType.MouseButton2)
         if not hit then return end
-        if mode == "hold" then
-            st.held = true
-        elseif mode == "toggle" then
-            st.toggled = not (st.toggled == true)
-            Notify("Aimbot", st.toggled and "Toggle ON" or "Toggle OFF")
-        end
+        if mode == "hold" then st.held = true
+        elseif mode == "toggle" then st.toggled = not (st.toggled == true) end
     end)
     Connections.AimbotInputEnd = UserInputService.InputEnded:Connect(function(input)
         if getMode() ~= "hold" then return end
-        local key = getKey()
-        if matches(input, key) or (key == Enum.UserInputType.MouseButton2 and input.UserInputType == Enum.UserInputType.MouseButton2) then
-            st.held = false
-        end
+        if matches(input, getKey()) or input.UserInputType == Enum.UserInputType.MouseButton2 then st.held = false end
     end)
 
     local function aimStep()
-        if not config.AimbotEnabled then return end
         if not isAimActive() then return end
         local cam = workspace.CurrentCamera
         if not cam then return end
-        local target = GetAimbotTargetRivals and GetAimbotTargetRivals()
+        local target = GetAimbotTargetRivals()
         if not target or not target.Parent then return end
         local aimPos = target.Position
-        local screenPos, onScreen = cam:WorldToViewportPoint(aimPos)
-        if not onScreen and screenPos.Z < 0 then return end
-        local movedMouse = false
+        local screenPos = cam:WorldToViewportPoint(aimPos)
         pcall(function()
             local mouse = UserInputService:GetMouseLocation()
             local dx = screenPos.X - mouse.X
             local dy = screenPos.Y - mouse.Y
-            local smooth = tonumber(config.AimbotSmooth) or 0.9
-            local sens = math.clamp(smooth, 0.2, 1)
+            local sens = math.clamp(tonumber(config.AimbotSmooth) or 0.9, 0.2, 1)
             dx, dy = dx * sens, dy * sens
             if math.abs(dx) < 0.5 and math.abs(dy) < 0.5 then return end
-            if mousemoverel then
-                mousemoverel(dx, dy)
-                movedMouse = true
-            elseif Input and Input.MouseMove then
-                Input.MouseMove(dx, dy)
-                movedMouse = true
-            end
+            if mousemoverel then mousemoverel(dx, dy) else cam.CFrame = CFrame.new(cam.CFrame.Position, aimPos) end
         end)
-        if not movedMouse then
-            local pos = cam.CFrame.Position
-            cam.CFrame = CFrame.new(pos, aimPos)
-        end
     end
 
-    local aimFrame = 0
+    local f = 0
     Connections.Aimbot = RunService.RenderStepped:Connect(function()
-        aimFrame += 1
-        if aimFrame % 3 ~= 0 then return end
+        f += 1
+        if f % 3 ~= 0 then return end
         pcall(aimStep)
     end)
-    Notify("Aimbot", "ON · Hold = mantener tecla")
+    Notify("Aimbot", "ON")
 end
-
 StopAimbot = function()
     SafeDisconnect("Aimbot")
     SafeDisconnect("AimbotInput")
     SafeDisconnect("AimbotInputEnd")
-    aimbotHolding = false
 end
--- ============ FIN PARTE 1/3 ============
+
 -- ======================================================================
---  PARTE 2/3  ·  BUILD LEGIT  ·  ESP (jugadores + world)
---  (sigue donde terminó la PARTE 1)
+--  ESP (jugadores + world)
 -- ======================================================================
 
--- stub: nombre de arma equipada (lo usa el ESP)
 if type(getWeaponName) ~= "function" then
     function getWeaponName(plr)
         local ok, name = pcall(function()
@@ -2596,67 +2025,46 @@ if type(getWeaponName) ~= "function" then
 end
 if type(Rivals) ~= "table" then Rivals = Rivals or {} end
 
--- ==================== LUAHOOK ESP (integrado bien) ====================
 do
-    if type(State) ~= "table" then
-        State = {}
-    end
+    if type(State) ~= "table" then State = {} end
     State.ESPObjects = State.ESPObjects or {}
-    State.PrimaryTarget = State.PrimaryTarget
-    State.RainbowHue = State.RainbowHue or 0
 end
 
 function getSafePlayers()
     local list = {}
     for _, p in ipairs(Players:GetPlayers()) do
-        if p and p:IsA("Player") then
-            list[#list + 1] = p
-        end
+        if p and p:IsA("Player") then list[#list + 1] = p end
     end
     return list
 end
 
--- Config unificado (ESP + world keys)
 if type(Config) ~= "table" or getmetatable(Config) == nil then
     Config = setmetatable({}, {
         __index = function(_, k)
-            if k == "ESP" then
-                return config.ESPEnabled == true or config.ESP == true
-            end
-            if k == "Weather" then
-                return config.WeatherEnabled == true or config.Weather == true
-            end
-            if k == "ThirdPersonEnabled" then
-                return config.ThirdPerson == true or config.ThirdPersonEnabled == true
-            end
-            -- map UI names → LuaHook names
+            if k == "ESP" then return config.ESPEnabled == true or config.ESP == true end
             if k == "ESPBox" then return config.ESPShowBox ~= false end
             if k == "ESPName" then return config.ESPShowName ~= false end
             if k == "ESPDistance" then return config.ESPShowDist ~= false end
             if k == "ESPHealth" or k == "ESPHealthBar" then return config.ESPShowHP ~= false end
             local v = config[k]
             if v ~= nil then return v end
-            -- defaults sensatos para que se vea bien (estilo UE / LuaHook)
             local defaults = {
                 ESPBoxStyle = "Corner Brackets",
-                ESPBoxBrackets = true,
                 ESPBoxThickness = 2,
                 ESPCasingThickness = 2,
                 ESPBoxColor = Color3.fromRGB(255, 255, 255),
                 ESPBoxTransparency = 0,
-                ESPBoxFill = false,
                 ESPBoxScale = 1,
                 ESPCornerLength = 0.28,
                 ESPNameMode = "DisplayName",
                 ESPTeamCheck = false,
-                ESPMaxDistance = 100000,
+                ESPMaxDistance = 1500,
                 ESPDistanceScaling = true,
                 ESPDistanceScalingRef = 50,
                 ESPHealthColorMode = "Ramp",
                 ESPHealthSmooth = true,
-                ESPHealthNumberMode = "Always",
+                ESPHealthNumberMode = "Off",
                 ESPHealthGhost = true,
-                ColorEnemy = Color3.fromRGB(255, 255, 255),
             }
             return defaults[k]
         end,
@@ -2664,9 +2072,6 @@ if type(Config) ~= "table" or getmetatable(Config) == nil then
             if k == "ESP" then
                 config.ESPEnabled = v and true or false
                 config.ESP = v and true or false
-            elseif k == "Weather" then
-                config.WeatherEnabled = v and true or false
-                config.Weather = v and true or false
             else
                 config[k] = v
             end
@@ -2677,57 +2082,22 @@ end
 local lp = LocalPlayer
 Camera = workspace.CurrentCamera
 pcall(function()
-    workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
-        Camera = workspace.CurrentCamera
-    end)
+    workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function() Camera = workspace.CurrentCamera end)
 end)
 
-if screenDraw == nil then
-    screenDraw = nil
-end
-
--- Helpers que el ESP de LuaHook necesita
-function envIdOf(player)
-    local id = nil
-    pcall(function()
-        if not player then return end
-        id = player:GetAttribute("EnvironmentID")
-        if id ~= nil then return end
-        local char = player.Character
-        if char then id = char:GetAttribute("EnvironmentID") end
-    end)
-    return id
-end
-
-function isTeammate(player)
-    if player == LocalPlayer or player == lp then return true end
-    local a = LocalPlayer:GetAttribute("TeamID")
-    local b = player:GetAttribute("TeamID")
-    if a ~= nil and b ~= nil then
-        return a == b
-    end
-    if LocalPlayer.Team ~= nil and player.Team ~= nil then
-        return LocalPlayer.Team == player.Team
-    end
-    return false
-end
-
-;(function()
 function isAlive(player)
     local c = player and player.Character
     if not c then return false end
     local h = c:FindFirstChildOfClass("Humanoid")
     if h then return h.Health > 0 end
-    return c:FindFirstChild("HumanoidRootPart") ~= nil or c:FindFirstChild("Head") ~= nil
+    return c:FindFirstChild("HumanoidRootPart") ~= nil
 end
-
 function getHealth(player)
     local c = player and player.Character
     local h = c and c:FindFirstChildOfClass("Humanoid")
     if not h then return 0, 100 end
     return h.Health, math.max(h.MaxHealth, 1)
 end
-
 function isVisible(worldPos)
     local cam = workspace.CurrentCamera
     if not cam or not worldPos then return true end
@@ -2744,55 +2114,50 @@ function isVisible(worldPos)
         end
     end)
     params.FilterDescendantsInstances = ignore
-    local hit = workspace:Raycast(origin, dir.Unit * dist, params)
-    return hit == nil
+    return workspace:Raycast(origin, dir.Unit * dist, params) == nil
+end
+function isTeammate(player)
+    if player == LocalPlayer or player == lp then return true end
+    return StrongIsTeammate(player)
 end
 
 local ESP = {}
-    local hasDrawing  = screenDraw ~= nil
-    local _renderConn = nil
-    local _espFrame   = 0
-    local _lastRenderT = 0
-    local _dcLastT    = 0
-    local _bboxCache  = {}
-    local _bboxFrameN = {}
-    local _ctx        = {}
-    local _renderArr  = {}
-    local _dcArr      = {}
-    local _radarO     = { drawings = {} }
-    local _module     = { drawings = {} }
+;(function()
+    local _renderConn, _espFrame, _bboxCache, _bboxFrameN, _ctx = nil, 0, {}, {}, {}
+    local _createBudget, CREATE_BUDGET_PER_FRAME = 0, 8
+    local _gui, _absLayer = nil, nil
     local BLACK = Color3.new(0, 0, 0)
     local WHITE = Color3.new(1, 1, 1)
     local INK   = Color3.fromRGB(4, 6, 10)
     local HPBG  = Color3.fromRGB(11, 15, 22)
-    local HP_W       = 5
-    local HP_GAP     = 6
-    local PAD        = 5
-    local FLAG_GAP   = 6
-    local BASE_H     = 1080
-    local MIN_W      = 8
-    local MIN_H      = 13
-    local BOX_W_STUDS = 4   * 1000 / 1080
-    local BOX_H_STUDS = 6.5 * 1000 / 1080
-    local TEXT_FLOOR  = 8
-    local DIST_MIN_MUL = 0.5
-    local cam        = Camera
+    local HP_W, HP_GAP, PAD, FLAG_GAP = 5, 6, 5, 6
+    local MIN_W, MIN_H = 8, 13
+    local BOX_W_STUDS, BOX_H_STUDS = 4 * 1000 / 1080, 6.5 * 1000 / 1080
+    local TEXT_FLOOR, DIST_MIN_MUL = 8, 0.5
+    local cam = Camera
     local FACES = {}
     for _, n in ipairs({ "Code", "RobotoMono", "Gotham", "GothamBold", "Arial", "SourceSans" }) do
         local ok, f = pcall(function() return Enum.Font[n] end)
         if ok and f then FACES[n] = f end
     end
     if FACES.Code == nil then FACES.Code = Enum.Font.SourceSans end
-    local _customFaces = {}
-    function faceFor(name)
-        local c = _customFaces[name]
-        if c ~= nil then return c end
-        return FACES[name] or FACES.Code
-    end
-    local GLYPH_TRI = string.char(0xE2, 0x96, 0xB2)
     local GLYPH_MID = string.char(0xC2, 0xB7)
-    function typePx(base, scale)
-        local v = math.floor(base * scale + 0.5)
+    local SKEL_R15 = {
+        {"Head","UpperTorso"},{"UpperTorso","LowerTorso"},
+        {"UpperTorso","LeftUpperArm"},{"LeftUpperArm","LeftLowerArm"},{"LeftLowerArm","LeftHand"},
+        {"UpperTorso","RightUpperArm"},{"RightUpperArm","RightLowerArm"},{"RightLowerArm","RightHand"},
+        {"LowerTorso","LeftUpperLeg"},{"LeftUpperLeg","LeftLowerLeg"},{"LeftLowerLeg","LeftFoot"},
+        {"LowerTorso","RightUpperLeg"},{"RightUpperLeg","RightLowerLeg"},{"RightLowerLeg","RightFoot"},
+    }
+    local SKEL_R6 = { {"Head","Torso"},{"Torso","Left Arm"},{"Torso","Right Arm"},{"Torso","Left Leg"},{"Torso","Right Leg"} }
+    local FLAG_COLORS = {
+        STARING = Color3.fromRGB(255, 70, 85), DEFLECT = Color3.fromRGB(53, 215, 199),
+        SHIELD = Color3.fromRGB(255, 194, 75), INVINCIBLE = Color3.fromRGB(255, 215, 0),
+        LOW = Color3.fromRGB(255, 90, 100),
+    }
+    function faceFor(name) return FACES[name] or FACES.Code end
+    function sizeFor(base, mul)
+        local v = math.floor(base * (mul or 1) + 0.5)
         if v < TEXT_FLOOR then v = TEXT_FLOOR end
         return v
     end
@@ -2801,17 +2166,8 @@ local ESP = {}
         local ref = Config.ESPDistanceScalingRef or 50
         return math.clamp(ref / math.max(dist or 1, 1), DIST_MIN_MUL, 1)
     end
-    function sizeFor(base, mul)
-        local v = math.floor(base * (mul or 1) + 0.5)
-        if v < TEXT_FLOOR then v = TEXT_FLOOR end
-        return v
-    end
     function styleLabel(t, face, size, casing)
-        if typeof(face) == "EnumItem" then
-            if t.Font ~= face then t.Font = face end
-        else
-            if t.FontFace ~= face then t.FontFace = face end
-        end
+        if t.Font ~= face then t.Font = face end
         if t.TextSize ~= size then t.TextSize = size end
         local st = t:FindFirstChildOfClass("UIStroke")
         if st then
@@ -2825,11 +2181,7 @@ local ESP = {}
         if not a or not b then return nil end
         local s = _seqCache[key]
         if s and s.a == a and s.b == b then return s.seq end
-        local seq = ColorSequence.new({
-            ColorSequenceKeypoint.new(0, a),
-            ColorSequenceKeypoint.new(0.5, b),
-            ColorSequenceKeypoint.new(1, a),
-        })
+        local seq = ColorSequence.new({ ColorSequenceKeypoint.new(0, a), ColorSequenceKeypoint.new(1, b) })
         _seqCache[key] = { a = a, b = b, seq = seq }
         return seq
     end
@@ -2855,53 +2207,9 @@ local ESP = {}
         if inst[prop] ~= c then inst[prop] = c end
     end
     function healthColor(frac)
-        local mode = Config.ESPHealthColorMode or "Ramp"
-        if mode == "Solid" then return Config.ESPHealthColor or Color3.fromRGB(61, 224, 122) end
-        if mode == "Gradient" then return WHITE end
-        if hpRamp then return hpRamp(frac) end
-        return Config.ESPHealthColor or Color3.fromRGB(61, 224, 122)
+        if Config.ESPHealthColorMode == "Solid" then return Config.ESPHealthColor or Color3.fromRGB(61, 224, 122) end
+        return Color3.fromRGB(61, 224, 122)
     end
-    local _lock = { obj = nil, cand = nil, candT = 0 }
-    function resolveLock(bestO, bestD, lockO, lockD, now)
-        local lk = _lock
-        if bestO == nil then lk.obj = nil; lk.cand = nil; return nil end
-        local prev = lk.obj
-        if lk.obj == nil or lockO == nil then
-            lk.obj = bestO; lk.cand = nil
-        elseif bestO == lk.obj then
-            lk.cand = nil
-        elseif bestD <= (lockD or math.huge) * 0.9 then
-            if lk.cand == bestO then
-                if (now - (lk.candT or now)) >= 0.5 then lk.obj = bestO; lk.cand = nil end
-            else
-                lk.cand = bestO; lk.candT = now
-            end
-        else
-            lk.cand = nil
-        end
-        if lk.obj and lk.obj ~= prev then lk.obj._primT = now end
-        return lk.obj
-    end
-    local SKEL_R15 = {
-        {"Head","UpperTorso"},{"UpperTorso","LowerTorso"},
-        {"UpperTorso","LeftUpperArm"},{"LeftUpperArm","LeftLowerArm"},{"LeftLowerArm","LeftHand"},
-        {"UpperTorso","RightUpperArm"},{"RightUpperArm","RightLowerArm"},{"RightLowerArm","RightHand"},
-        {"LowerTorso","LeftUpperLeg"},{"LeftUpperLeg","LeftLowerLeg"},{"LeftLowerLeg","LeftFoot"},
-        {"LowerTorso","RightUpperLeg"},{"RightUpperLeg","RightLowerLeg"},{"RightLowerLeg","RightFoot"},
-    }
-    local SKEL_R6 = {
-        {"Head","Torso"},
-        {"Torso","Left Arm"},{"Torso","Right Arm"},
-        {"Torso","Left Leg"},{"Torso","Right Leg"},
-    }
-    local FLAG_COLORS = {
-        STARING     = Color3.fromRGB(255,  70,  85),
-        DEFLECT     = Color3.fromRGB( 53, 215, 199),
-        SHIELD      = Color3.fromRGB(255, 194,  75),
-        INVINCIBLE  = Color3.fromRGB(255, 215,   0),
-        LOW         = Color3.fromRGB(255,  90, 100),
-    }
-    local _gui, _absLayer = nil, nil
     function mkAbsLayer(g)
         local a = Instance.new("Frame")
         a.Name = "a"; a.BackgroundTransparency = 1; a.BorderSizePixel = 0
@@ -2916,11 +2224,11 @@ local ESP = {}
         end
         local ok, g = pcall(function()
             local s = Instance.new("ScreenGui")
-            s.Name = "\0" .. tostring(math.random(1e5, 1e6))
-            s.IgnoreGuiInset  = true
-            s.ResetOnSpawn    = false
-            s.DisplayOrder    = 99990
-            s.ZIndexBehavior  = Enum.ZIndexBehavior.Sibling
+            s.Name = "ShakoESP"
+            s.IgnoreGuiInset = true
+            s.ResetOnSpawn = false
+            s.DisplayOrder = 99990
+            s.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
             local parent
             pcall(function() parent = gethui and gethui() end)
             if parent == nil then pcall(function() parent = game:GetService("CoreGui") end) end
@@ -2935,50 +2243,40 @@ local ESP = {}
     end
     function mkFrame(parent, z)
         local f = Instance.new("Frame")
-        f.BackgroundTransparency = 1
-        f.BorderSizePixel = 0
-        f.ZIndex = z or 1
+        f.BackgroundTransparency = 1; f.BorderSizePixel = 0; f.ZIndex = z or 1
         f.Parent = parent
         return f
     end
     function mkLabel(parent, z, align)
         local t = Instance.new("TextLabel")
-        t.BackgroundTransparency = 1
-        t.BorderSizePixel = 0
-        t.RichText = true
+        t.BackgroundTransparency = 1; t.BorderSizePixel = 0; t.RichText = true
         t.TextXAlignment = align or Enum.TextXAlignment.Center
         t.AutomaticSize = Enum.AutomaticSize.XY
-        t.Size = UDim2.fromOffset(0, 0)
-        t.ZIndex = z or 3
-        t.TextColor3 = WHITE
-        local st = Instance.new("UIStroke")
-        st.Color = BLACK; st.Thickness = 1; st.Transparency = 0
-        st.LineJoinMode = Enum.LineJoinMode.Round
-        st.Parent = t
+        t.Size = UDim2.fromOffset(0, 0); t.ZIndex = z or 3; t.TextColor3 = WHITE
+        local st = Instance.new("UIStroke"); st.Color = BLACK; st.Thickness = 1; st.Transparency = 0
+        st.LineJoinMode = Enum.LineJoinMode.Round; st.Parent = t
         t.Parent = parent
         return t
     end
-    function mkList(parent, z, pad, horizAlign, vertAlign)
+    function mkList(parent, z, pad, ha, va)
         local f = mkFrame(parent, z)
         f.AutomaticSize = Enum.AutomaticSize.XY
         f.Size = UDim2.fromOffset(0, 0)
         local l = Instance.new("UIListLayout")
-        l.FillDirection        = Enum.FillDirection.Vertical
-        l.SortOrder            = Enum.SortOrder.LayoutOrder
-        l.Padding              = UDim.new(0, pad or 2)
-        l.HorizontalAlignment  = horizAlign or Enum.HorizontalAlignment.Center
-        l.VerticalAlignment    = vertAlign or Enum.VerticalAlignment.Top
+        l.FillDirection = Enum.FillDirection.Vertical
+        l.SortOrder = Enum.SortOrder.LayoutOrder
+        l.Padding = UDim.new(0, pad or 2)
+        l.HorizontalAlignment = ha or Enum.HorizontalAlignment.Center
+        l.VerticalAlignment = va or Enum.VerticalAlignment.Top
         l.Parent = f
         return f
     end
     function mkRing(parent, z, colour, thick)
         local f = mkFrame(parent, z)
-        f.AnchorPoint = Vector2.new(0.5, 0.5)
-        f.Position = UDim2.fromScale(0.5, 0.5)
-        f.Size = UDim2.fromScale(1, 1)
+        f.AnchorPoint = Vector2.new(0.5, 0.5); f.Position = UDim2.fromScale(0.5, 0.5); f.Size = UDim2.fromScale(1, 1)
         local s = Instance.new("UIStroke")
         s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-        s.LineJoinMode    = Enum.LineJoinMode.Miter
+        s.LineJoinMode = Enum.LineJoinMode.Miter
         s.Color = colour; s.Thickness = thick; s.Transparency = 0
         s.Parent = f
         return f, s
@@ -2986,190 +2284,82 @@ local ESP = {}
     function mkCasedRect(parent, z)
         local box = mkFrame(parent, z)
         box.Size = UDim2.fromScale(1, 1)
-        local rIn,  sIn  = mkRing(box, z + 1, INK,   2)
+        local rIn, sIn = mkRing(box, z + 1, INK, 2)
         local rMid, sMid = mkRing(box, z + 2, WHITE, 2)
-        local rOut, sOut = mkRing(box, z + 1, INK,   2)
+        local rOut, sOut = mkRing(box, z + 1, INK, 2)
         return box, sMid, sOut, sIn, rMid, rOut, rIn
     end
     function buildTree(o)
         local g = espGui(); if not g then return nil end
         local u = {}
         local root = mkFrame(g, 2)
-        root.Name = "r"
-        root.Visible = false
-        root.Size = UDim2.fromOffset(MIN_W, MIN_H)
+        root.Name = "r"; root.Visible = false; root.Size = UDim2.fromOffset(MIN_W, MIN_H)
         u.root = root
-        u.fill = mkFrame(root, 2)
-        u.fill.Size = UDim2.fromScale(1, 1)
-        u.fill.Visible = false
+        u.fill = mkFrame(root, 2); u.fill.Size = UDim2.fromScale(1, 1); u.fill.Visible = false
         u.box, u.boxStroke, u.caseOut, u.caseIn, u.ringMid, u.ringOut, u.ringIn = mkCasedRect(root, 3)
         u.box.Visible = false
         u.corners = {}
         for i = 1, 8 do
             local c = mkFrame(root, 6)
-            c.BackgroundTransparency = 0
-            c.BackgroundColor3 = WHITE
-            c.Visible = false
-            local cs = Instance.new("UIStroke")
-            cs.Color = INK; cs.Thickness = 1; cs.Transparency = 0
-            cs.LineJoinMode = Enum.LineJoinMode.Miter
-            cs.Parent = c
+            c.BackgroundTransparency = 0; c.BackgroundColor3 = WHITE; c.Visible = false
+            local cs = Instance.new("UIStroke"); cs.Color = INK; cs.Thickness = 1; cs.Transparency = 0
+            cs.LineJoinMode = Enum.LineJoinMode.Miter; cs.Parent = c
             u.corners[i] = c
         end
         local hp = mkFrame(root, 4)
-        hp.AnchorPoint = Vector2.new(1, 0)
-        hp.Position = UDim2.new(0, -HP_GAP, 0, 0)
-        hp.Size = UDim2.new(0, HP_W, 1, 0)
-        hp.BackgroundTransparency = 0
-        hp.BackgroundColor3 = HPBG
-        local hs = Instance.new("UIStroke")
-        hs.Color = INK; hs.Thickness = 1; hs.Transparency = 0
-        hs.LineJoinMode = Enum.LineJoinMode.Miter
-        hs.Parent = hp
-        hp.Visible = false
-        u.hp = hp
-        u.hpGhost = mkFrame(hp, 5)
-        u.hpGhost.BackgroundTransparency = 0
-        u.hpGhost.BackgroundColor3 = WHITE
-        u.hpGhost.AnchorPoint = Vector2.new(0, 1)
-        u.hpGhost.Position = UDim2.fromScale(0, 1)
-        u.hpGhost.Visible = false
-        u.hpFill = mkFrame(hp, 6)
-        u.hpFill.BackgroundTransparency = 0
-        u.hpFill.BackgroundColor3 = WHITE
-        u.hpFill.AnchorPoint = Vector2.new(0, 1)
-        u.hpFill.Position = UDim2.fromScale(0, 1)
-        u.hpFill.Size = UDim2.fromScale(1, 1)
+        hp.AnchorPoint = Vector2.new(1, 0); hp.Position = UDim2.new(0, -HP_GAP, 0, 0)
+        hp.Size = UDim2.new(0, HP_W, 1, 0); hp.BackgroundTransparency = 0; hp.BackgroundColor3 = HPBG
+        local hs = Instance.new("UIStroke"); hs.Color = INK; hs.Thickness = 1; hs.Transparency = 0
+        hs.LineJoinMode = Enum.LineJoinMode.Miter; hs.Parent = hp
+        hp.Visible = false; u.hp = hp
+        u.hpGhost = mkFrame(hp, 5); u.hpGhost.BackgroundTransparency = 0; u.hpGhost.BackgroundColor3 = WHITE
+        u.hpGhost.AnchorPoint = Vector2.new(0, 1); u.hpGhost.Position = UDim2.fromScale(0, 1); u.hpGhost.Visible = false
+        u.hpFill = mkFrame(hp, 6); u.hpFill.BackgroundTransparency = 0; u.hpFill.BackgroundColor3 = WHITE
+        u.hpFill.AnchorPoint = Vector2.new(0, 1); u.hpFill.Position = UDim2.fromScale(0, 1); u.hpFill.Size = UDim2.fromScale(1, 1)
         u.hpNum = mkLabel(root, 7, Enum.TextXAlignment.Right)
-        u.hpNum.AnchorPoint = Vector2.new(1, 0)
-        u.hpNum.Position = UDim2.new(0, -HP_GAP - HP_W - 3, 0, 0)
-        u.hpNum.Visible = false
+        u.hpNum.AnchorPoint = Vector2.new(1, 0); u.hpNum.Position = UDim2.new(0, -HP_GAP - HP_W - 3, 0, 0); u.hpNum.Visible = false
         local head = mkList(root, 7, 2, Enum.HorizontalAlignment.Center, Enum.VerticalAlignment.Bottom)
-        head.AnchorPoint = Vector2.new(0.5, 1)
-        head.Position = UDim2.new(0.5, 0, 0, -PAD)
-        head.Visible = false
+        head.AnchorPoint = Vector2.new(0.5, 1); head.Position = UDim2.new(0.5, 0, 0, -PAD); head.Visible = false
         u.head = head
-        u.name = mkLabel(head, 8)
-        u.name.LayoutOrder = 1
-        u.under = mkFrame(head, 8)
-        u.under.LayoutOrder = 2
-        u.under.BackgroundTransparency = 0
-        u.under.BackgroundColor3 = WHITE
-        u.under.Size = UDim2.fromOffset(0, 2)
-        u.under.Visible = false
+        u.name = mkLabel(head, 8); u.name.LayoutOrder = 1
+        u.under = mkFrame(head, 8); u.under.LayoutOrder = 2; u.under.BackgroundTransparency = 0
+        u.under.BackgroundColor3 = WHITE; u.under.Size = UDim2.fromOffset(0, 2); u.under.Visible = false
         local foot = mkList(root, 7, 2, Enum.HorizontalAlignment.Center, Enum.VerticalAlignment.Top)
-        foot.AnchorPoint = Vector2.new(0.5, 0)
-        foot.Position = UDim2.new(0.5, 0, 1, PAD)
-        foot.Visible = false
+        foot.AnchorPoint = Vector2.new(0.5, 0); foot.Position = UDim2.new(0.5, 0, 1, PAD); foot.Visible = false
         u.foot = foot
-        u.info = mkLabel(foot, 8)
-        u.info.LayoutOrder = 1
-        u.info.Visible = false
-        local ammo = mkFrame(foot, 8)
-        ammo.LayoutOrder = 2
-        ammo.BackgroundTransparency = 0
-        ammo.BackgroundColor3 = HPBG
-        ammo.Size = UDim2.fromOffset(28, 3)
-        local as = Instance.new("UIStroke")
-        as.Color = INK; as.Thickness = 1; as.Transparency = 0
-        as.LineJoinMode = Enum.LineJoinMode.Miter
-        as.Parent = ammo
-        ammo.Visible = false
-        u.ammo = ammo
-        u.ammoFill = mkFrame(ammo, 9)
-        u.ammoFill.BackgroundTransparency = 0
-        u.ammoFill.BackgroundColor3 = WHITE
-        u.ammoFill.Size = UDim2.fromScale(1, 1)
+        u.info = mkLabel(foot, 8); u.info.LayoutOrder = 1; u.info.Visible = false
         local flags = mkList(root, 7, 3, Enum.HorizontalAlignment.Left, Enum.VerticalAlignment.Top)
-        flags.AnchorPoint = Vector2.new(0, 0)
-        flags.Position = UDim2.new(1, FLAG_GAP, 0, 0)
-        flags.Visible = false
+        flags.AnchorPoint = Vector2.new(0, 0); flags.Position = UDim2.new(1, FLAG_GAP, 0, 0); flags.Visible = false
         u.flags = flags
         u.chips = {}
         for i = 1, 5 do
-            local c = mkLabel(flags, 8, Enum.TextXAlignment.Left)
-            c.LayoutOrder = i
-            c.Visible = false
-            u.chips[i] = c
+            local c = mkLabel(flags, 8, Enum.TextXAlignment.Left); c.LayoutOrder = i; c.Visible = false; u.chips[i] = c
         end
-        u.chev = mkLabel(root, 9)
-        u.chev.AnchorPoint = Vector2.new(0.5, 1)
-        u.chev.Text = GLYPH_TRI
-        u.chev.Visible = false
-        u.pulse = mkFrame(root, 1)
-        u.pulse.AnchorPoint = Vector2.new(0.5, 0.5)
-        u.pulse.Position = UDim2.fromScale(0.5, 0.5)
-        local ps = Instance.new("UIStroke")
-        ps.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-        ps.LineJoinMode = Enum.LineJoinMode.Miter
-        ps.Thickness = 2; ps.Color = WHITE
-        ps.Parent = u.pulse
-        u.pulseStroke = ps
-        u.pulse.Visible = false
         local a = _absLayer
         u.skel = {}
-        u.tracer  = mkFrame(a, 2); u.tracer.AnchorPoint = Vector2.new(0.5, 0.5)
+        u.tracer = mkFrame(a, 2); u.tracer.AnchorPoint = Vector2.new(0.5, 0.5)
         u.tracer.BackgroundTransparency = 0; u.tracer.BackgroundColor3 = WHITE; u.tracer.Visible = false
-        u.look    = mkFrame(a, 2); u.look.AnchorPoint = Vector2.new(0.5, 0.5)
-        u.look.BackgroundTransparency = 0; u.look.BackgroundColor3 = WHITE; u.look.Visible = false
-        u.dot     = mkFrame(a, 3); u.dot.AnchorPoint = Vector2.new(0.5, 0.5)
+        u.dot = mkFrame(a, 3); u.dot.AnchorPoint = Vector2.new(0.5, 0.5)
         u.dot.BackgroundTransparency = 0; u.dot.BackgroundColor3 = WHITE; u.dot.Visible = false
         local dc = Instance.new("UICorner"); dc.CornerRadius = UDim.new(1, 0); dc.Parent = u.dot
-        local ds = Instance.new("UIStroke"); ds.Color = INK; ds.Thickness = 1; ds.Parent = u.dot
         return u
     end
     function destroyTree(o)
         local u = o.ui; if not u then return end
         pcall(function() if u.root then u.root:Destroy() end end)
         pcall(function() if u.tracer then u.tracer:Destroy() end end)
-        pcall(function() if u.look then u.look:Destroy() end end)
         pcall(function() if u.dot then u.dot:Destroy() end end)
-        if u.skel then
-            for i = 1, #u.skel do pcall(function() u.skel[i]:Destroy() end) end
-        end
+        if u.skel then for i = 1, #u.skel do pcall(function() u.skel[i]:Destroy() end) end end
         o.ui = nil
-    end
-    local _createBudget = 0
-    local CREATE_BUDGET_PER_FRAME = 6 -- OPT lag
-    function newDraw(t)
-        if not hasDrawing then return nil end
-        local ok, d = pcall(screenDraw, t)
-        if not ok then return nil end
-        d.Visible = false; return d
-    end
-    function nd(o, key, dtype)
-        local d = o[key]
-        if d == nil then
-            if _createBudget <= 0 then return nil end
-            _createBudget = _createBudget - 1
-            d = newDraw(dtype) or false
-            o[key] = d
-            if d then o.drawings[#o.drawings + 1] = d end
-        end
-        return d or nil
-    end
-    function ndArr(o, key, dtype, n)
-        local arr = o[key]
-        if not arr then arr = {}; o[key] = arr end
-        for i = #arr + 1, n do
-            if _createBudget <= 0 then break end
-            local d = newDraw(dtype)
-            if not d then break end
-            _createBudget = _createBudget - 1
-            arr[i] = d
-            o.drawings[#o.drawings + 1] = d
-        end
-        return arr
     end
     function ensureCham(o, char)
         local hl = o.cham
         if hl == nil then
             hl = Instance.new("Highlight")
             hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-            hl.Enabled   = false
-            hl.Parent    = char
+            hl.Enabled = false; hl.Parent = char
             o.cham = hl
-        elseif hl and hl.Parent ~= char then
+        elseif hl.Parent ~= char then
             pcall(function() hl.Parent = char end)
         end
         return o.cham
@@ -3177,12 +2367,8 @@ local ESP = {}
     function cleanESP(p)
         local o = State.ESPObjects[p]; if not o then return end
         destroyTree(o)
-        for _, d in ipairs(o.drawings or {}) do
-            pcall(function() if d.Remove then d:Remove() end end)
-        end
         if o.cham and o.cham.Parent then pcall(function() o.cham:Destroy() end) end
-        _bboxCache[p]  = nil
-        _bboxFrameN[p] = nil
+        _bboxCache[p] = nil; _bboxFrameN[p] = nil
         State.ESPObjects[p] = nil
     end
     function buildESP(player)
@@ -3190,43 +2376,34 @@ local ESP = {}
         cleanESP(player)
         local char = player.Character; if not char then return end
         local root = char:FindFirstChild("HumanoidRootPart"); if not root then return end
-        local hum  = char:FindFirstChildOfClass("Humanoid")
+        local hum = char:FindFirstChildOfClass("Humanoid")
         local isR6 = (hum and hum.RigType == Enum.HumanoidRigType.R6) or (char:FindFirstChild("Torso") ~= nil)
-        local rig  = isR6 and SKEL_R6 or SKEL_R15
+        local rig = isR6 and SKEL_R6 or SKEL_R15
         local bones = {}
-        for i, pair in ipairs(rig) do
-            bones[i] = { a = char:FindFirstChild(pair[1]), b = char:FindFirstChild(pair[2]) }
-        end
-        local o = { drawings = {}, root = root, rig = rig, bones = bones, _fadeT = tick() }
+        for i, pair in ipairs(rig) do bones[i] = { a = char:FindFirstChild(pair[1]), b = char:FindFirstChild(pair[2]) } end
+        local o = { root = root, rig = rig, bones = bones, _fadeT = tick() }
         o.ui = buildTree(o)
         State.ESPObjects[player] = o
     end
     function bbox(char, player)
-        local frame = _bboxFrameN[player] or -999
-        if (_espFrame - frame) < 1 then
+        if (_espFrame - (_bboxFrameN[player] or -999)) < 1 then
             local c = _bboxCache[player]
             if c then return c[1], c[2], c[3], c[4] end
             return nil
         end
-        _bboxFrameN[player] = _espFrame
-        _bboxCache[player] = nil
+        _bboxFrameN[player] = _espFrame; _bboxCache[player] = nil
         local ok, pivot = pcall(function() return char:GetPivot().Position end)
         if not ok or pivot == nil then return nil end
         local sp = cam:WorldToViewportPoint(pivot)
-        local depth = sp.Z
-        if depth <= 0.5 then return nil end
+        if sp.Z <= 0.5 then return nil end
         local vpY = _ctx.vp and _ctx.vp.Y or 1080
         local tanHalf = math.tan(math.rad(cam.FieldOfView) * 0.5)
         if tanHalf <= 0 then return nil end
-        local scale = vpY / (2 * depth * tanHalf)
-        local bs = Config.ESPBoxScale or 1
-        local rawW = BOX_W_STUDS * scale * bs
-        local rawH = BOX_H_STUDS * scale * bs
+        local scale = vpY / (2 * sp.Z * tanHalf)
+        local rawW = BOX_W_STUDS * scale; local rawH = BOX_H_STUDS * scale
         if rawH > 4000 or rawW > 3000 then return nil end
-        local x = math.floor(sp.X - rawW * 0.5)
-        local y = math.floor(sp.Y - rawH * 0.5)
-        local bw = math.floor(math.max(MIN_W, rawW))
-        local bh = math.floor(math.max(MIN_H, rawH))
+        local x = math.floor(sp.X - rawW * 0.5); local y = math.floor(sp.Y - rawH * 0.5)
+        local bw = math.floor(math.max(MIN_W, rawW)); local bh = math.floor(math.max(MIN_H, rawH))
         _bboxCache[player] = { x, y, x + bw, y + bh }
         return x, y, x + bw, y + bh
     end
@@ -3234,18 +2411,13 @@ local ESP = {}
         local u = o.ui; if not u then return end
         if u.root then u.root.Visible = false end
         if u.tracer then u.tracer.Visible = false end
-        if u.look then u.look.Visible = false end
         if u.dot then u.dot.Visible = false end
         if u.skel then for i = 1, #u.skel do u.skel[i].Visible = false end end
-    end
-    function hideDrawings(o)
-        for _, d in ipairs(o.drawings) do d.Visible = false end
     end
     function hideAll(o, force)
         if o._allHidden and not force then return end
         o._allHidden = true
         hideTree(o)
-        hideDrawings(o)
         if o.cham then o.cham.Enabled = false end
     end
     function ESP.rebuildAll()
@@ -3255,49 +2427,28 @@ local ESP = {}
             if p ~= lp and p.Character then buildESP(p) end
         end
     end
-    function ESP.registerFace(name, font)
-        if type(name) == "string" and font ~= nil then _customFaces[name] = font end
-    end
     function espWeapon(o, player)
         local now = tick()
-        if not o._wepT or (now - o._wepT) > 0.5 then
-            o._wep  = getWeaponName(player)
-            o._wepT = now
-        end
+        if not o._wepT or (now - o._wepT) > 0.5 then o._wep = getWeaponName(player); o._wepT = now end
         return o._wep or "?"
     end
     function paintBox(u, ctx)
-        local mode = Config.ESPBoxColorMode or "Solid"
-        paint(u.boxStroke, "Color", "box", mode, Config.ESPBoxColor, Config.ESPBoxGradA, Config.ESPBoxGradB,
-              Config.ESPGradientRotBox or 0, Config.ESPGradientSpeed, ctx.now)
-        local ct = math.floor(math.clamp(Config.ESPCasingThickness or 2, 1, 4))
+        paint(u.boxStroke, "Color", "box", Config.ESPBoxColorMode or "Solid", Config.ESPBoxColor,
+              Config.ESPBoxGradA, Config.ESPBoxGradB, 0, Config.ESPGradientSpeed, ctx.now)
         local bt = math.floor(math.clamp(Config.ESPBoxThickness or 2, 1, 5))
-        if ctx.primary and Config.ESPPrimaryEmphasis then bt = bt + 1 end
-        if u.caseOut then
-            u.caseOut.Thickness = ct
-            u.caseOut.Color = Color3.fromRGB(0, 0, 0)
-        end
-        if u.caseIn then
-            u.caseIn.Thickness = ct
-            u.caseIn.Color = Color3.fromRGB(0, 0, 0)
-        end
         if u.boxStroke.Thickness ~= bt then u.boxStroke.Thickness = bt end
-        local sOut = UDim2.fromScale(1, 1)
-        local sMid = UDim2.new(1, -2 * bt, 1, -2 * bt)
-        local sIn  = UDim2.new(1, -2 * bt - 2 * ct, 1, -2 * bt - 2 * ct)
-        if u.ringOut.Size ~= sOut then u.ringOut.Size = sOut end
-        if u.ringMid.Size ~= sMid then u.ringMid.Size = sMid end
-        if u.ringIn.Size  ~= sIn  then u.ringIn.Size  = sIn  end
+        if u.caseOut then u.caseOut.Thickness = math.max(math.floor(Config.ESPCasingThickness or 2), 1); u.caseOut.Color = BLACK; u.caseOut.Transparency = 0 end
+        if u.caseIn then u.caseIn.Thickness = math.max(math.floor(Config.ESPCasingThickness or 2), 1); u.caseIn.Color = BLACK; u.caseIn.Transparency = 0 end
+        u.ringOut.Size = UDim2.fromScale(1, 1)
+        u.ringMid.Size = UDim2.new(1, -2 * bt, 1, -2 * bt)
+        u.ringIn.Size  = UDim2.new(1, -2 * bt - 4, 1, -2 * bt - 4)
         local tr = math.clamp((Config.ESPBoxTransparency or 0) + (1 - (ctx.fade or 1)), 0, 1)
-        if u.boxStroke.Transparency ~= tr then u.boxStroke.Transparency = tr end
-        if u.caseOut.Transparency ~= tr then u.caseOut.Transparency = tr end
-        if u.caseIn.Transparency  ~= tr then u.caseIn.Transparency  = tr end
+        u.boxStroke.Transparency = tr
     end
     function drawCorners(u, w, h, ctx)
         local len = math.floor(math.clamp(w * (Config.ESPCornerLength or 0.28), 4, math.max(w * 0.48, 6)))
-        local th  = math.max(math.floor(Config.ESPBoxThickness or 1), 1)
+        local th = math.max(math.floor(Config.ESPBoxThickness or 1), 1)
         local col = Config.ESPBoxColor or WHITE
-        local mode = Config.ESPBoxColorMode or "Solid"
         local spec = {
             { 0, 0, len, th }, { 0, 0, th, len },
             { w - len, 0, len, th }, { w - th, 0, th, len },
@@ -3305,18 +2456,10 @@ local ESP = {}
             { w - len, h - th, len, th }, { w - th, h - len, th, len },
         }
         for i = 1, 8 do
-            local c = u.corners[i]
-            local s = spec[i]
-            c.Position = UDim2.fromOffset(s[1], s[2])
-            c.Size     = UDim2.fromOffset(s[3], s[4])
-            paint(c, "BackgroundColor3", "box", mode, col, Config.ESPBoxGradA, Config.ESPBoxGradB,
-                  Config.ESPGradientRotBox or 0, Config.ESPGradientSpeed, ctx.now)
-            local cs = c:FindFirstChildOfClass("UIStroke")
-            if cs then
-                cs.Color = Color3.fromRGB(0, 0, 0)
-                cs.Thickness = math.max(math.floor(Config.ESPCasingThickness or 2), 1)
-                cs.Transparency = 0
-            end
+            local c = u.corners[i]; local s = spec[i]
+            c.Position = UDim2.fromOffset(s[1], s[2]); c.Size = UDim2.fromOffset(s[3], s[4])
+            paint(c, "BackgroundColor3", "box", Config.ESPBoxColorMode or "Solid", col,
+                  Config.ESPBoxGradA, Config.ESPBoxGradB, 0, Config.ESPGradientSpeed, ctx.now)
             c.Visible = true
         end
     end
@@ -3330,14 +2473,6 @@ local ESP = {}
         end
         fill = math.clamp(fill, 0, 1)
         u.hp.Visible = true
-        u.hp.BackgroundColor3 = Color3.fromRGB(8, 10, 14)
-        u.hp.BackgroundTransparency = 0.15
-        local hs = u.hp:FindFirstChildOfClass("UIStroke")
-        if hs then
-            hs.Color = Color3.fromRGB(0, 0, 0)
-            hs.Thickness = 2
-            hs.Transparency = 0
-        end
         local pad = 1
         u.hpFill.Position = UDim2.new(0, pad, 1, -pad)
         u.hpFill.AnchorPoint = Vector2.new(0, 1)
@@ -3345,11 +2480,7 @@ local ESP = {}
         local col
         if fill > 0.6 then
             local t = (fill - 0.6) / 0.4
-            col = Color3.fromRGB(
-                math.floor(80 + (255 - 80) * (1 - t)),
-                255,
-                math.floor(80 * (1 - t))
-            )
+            col = Color3.fromRGB(math.floor(80 + (255 - 80) * (1 - t)), 255, math.floor(80 * (1 - t)))
         elseif fill > 0.3 then
             local t = (fill - 0.3) / 0.3
             col = Color3.fromRGB(255, math.floor(200 * t + 55 * (1 - t)), 40)
@@ -3357,133 +2488,58 @@ local ESP = {}
             local t = fill / 0.3
             col = Color3.fromRGB(255, math.floor(55 * t), 40)
         end
-        if Config.ESPHealthColorMode == "Solid" then
-            col = Config.ESPHealthColor or Color3.fromRGB(80, 255, 120)
-        end
+        if Config.ESPHealthColorMode == "Solid" then col = Config.ESPHealthColor or Color3.fromRGB(80, 255, 120) end
         u.hpFill.BackgroundColor3 = col
         u.hpFill.BackgroundTransparency = Config.ESPHealthTransparency or 0
-        if Config.ESPHealthGhost and o._ghostT and o._ghostFrac and o._ghostFrac > fill
-                and (ctx.now - o._ghostT) < 0.4 then
-            u.hpGhost.Visible = true
-            u.hpGhost.Position = UDim2.new(0, pad, 1, -pad)
-            u.hpGhost.AnchorPoint = Vector2.new(0, 1)
-            u.hpGhost.Size = UDim2.new(1, -pad * 2, math.clamp(o._ghostFrac, 0, 1), -pad)
-            u.hpGhost.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-            u.hpGhost.BackgroundTransparency = 0.4 + 0.55 * math.clamp((ctx.now - o._ghostT) / 0.4, 0, 1)
-        else
-            u.hpGhost.Visible = false
-        end
-        local nm = Config.ESPHealthNumberMode or "Always"
-        local show = nm == "Always" or (nm == "OnDamage" and frac < 0.999)
+        local show = Config.ESPHealthNumberMode == "Always"
         if show then
             u.hpNum.Visible = true
             u.hpNum.Text = tostring(math.floor(hp or 0))
             styleLabel(u.hpNum, ctx.face, sizeFor((ctx.tsHp or 12) + 1, ctx.dmul), ctx.casing)
             u.hpNum.TextColor3 = col
             u.hpNum.TextTransparency = 1 - (ctx.fade or 1)
-            u.hpNum.Position = UDim2.new(0, -HP_GAP - HP_W - 4, math.clamp(1 - fill, 0, 1), 0)
         else
             u.hpNum.Visible = false
         end
     end
     function drawText(u, o, player, ctx, dist, frac)
-        local declut = Config.ESPDeclutter and o._declutter
-        if Config.ESPName and not declut then
-            u.head.Visible = true
-            u.name.Visible = true
+        if Config.ESPName then
+            u.head.Visible = true; u.name.Visible = true
             styleLabel(u.name, ctx.face, sizeFor(ctx.tsName, ctx.dmul), ctx.casing)
             u.name.Text = (Config.ESPNameMode == "Username") and player.Name or player.DisplayName
             paint(u.name, "TextColor3", "name", Config.ESPNameColorMode or "Solid", Config.ESPNameColor,
-                  Config.ESPNameGradA, Config.ESPNameGradB, Config.ESPGradientRotText or 90,
-                  Config.ESPGradientSpeed, ctx.now)
+                  Config.ESPNameGradA, Config.ESPNameGradB, 0, Config.ESPGradientSpeed, ctx.now)
             u.name.TextTransparency = math.clamp((Config.ESPNameTransparency or 0) + (1 - (ctx.fade or 1)), 0, 1)
-            if Config.ESPNameHealthUnderline and frac then
-                local tb = u.name.TextBounds
-                u.under.Visible = true
-                u.under.Size = UDim2.fromOffset(math.max(math.floor((tb and tb.X or 0) * frac), 1), 2)
-                u.under.BackgroundColor3 = healthColor(frac)
-            else
-                u.under.Visible = false
-            end
         else
             u.head.Visible = false
         end
-        local showInfo = (Config.ESPDistance or Config.ESPWeapon) and not declut
-        local showAmmo = Config.ESPAmmoBar and not declut
-        u.foot.Visible = showInfo or showAmmo
+        local showInfo = Config.ESPDistance
+        u.foot.Visible = showInfo
         if showInfo then
-            local txt
-            if Config.ESPWeapon then txt = espWeapon(o, player) end
-            if Config.ESPDistance then
-                local d = ("%dm"):format(dist)
-                txt = txt and (txt .. " " .. GLYPH_MID .. " " .. d) or d
-            end
             u.info.Visible = true
             styleLabel(u.info, ctx.face, sizeFor(ctx.tsInfo, ctx.dmul), ctx.casing)
-            u.info.Text = txt or ""
+            u.info.Text = ("%dm"):format(dist)
             paint(u.info, "TextColor3", "info", Config.ESPInfoColorMode or "Solid", Config.ESPInfoColor,
-                  Config.ESPInfoGradA, Config.ESPInfoGradB, Config.ESPGradientRotText or 90,
-                  Config.ESPGradientSpeed, ctx.now)
+                  Config.ESPInfoGradA, Config.ESPInfoGradB, 0, Config.ESPGradientSpeed, ctx.now)
             u.info.TextTransparency = 1 - (ctx.fade or 1)
         else
             u.info.Visible = false
         end
-        if showAmmo then
-            local ammo, maxAmmo = 30, 30
-            pcall(function()
-                local item = Rivals.Fighter and Rivals.Fighter:Get(player)
-                local eq = item and (item.EquippedItem or (item.GetEquippedItem and item:GetEquippedItem()))
-                if eq and eq.Data then
-                    ammo = eq.Data.Ammo or 30
-                    maxAmmo = eq.Data.MaxAmmo or 30
-                end
-            end)
-            local pct = math.clamp(maxAmmo > 0 and (ammo / maxAmmo) or 1, 0, 1)
-            u.ammo.Visible = true
-            u.ammo.Size = UDim2.fromOffset(math.max(math.floor(ctx.boxW * 0.9), 12), 3)
-            u.ammoFill.Size = UDim2.new(pct, 0, 1, 0)
-            paint(u.ammoFill, "BackgroundColor3", "mark", Config.ESPMarkColorMode or "Solid",
-                  Config.ESPMarkColor, Config.ESPMarkGradA, Config.ESPMarkGradB, 0,
-                  Config.ESPGradientSpeed, ctx.now)
-        else
-            u.ammo.Visible = false
-        end
     end
     function drawFlags(u, o, player, ctx, char, frac)
         local n = 0
-        function add(key, label)
+        local function add(key, label)
             if n >= 5 then return end
             n = n + 1
             local c = u.chips[n]
-            local mode = Config.ESPFlagColorMode or "PerFlag"
             c.Visible = true
             styleLabel(c, ctx.face, sizeFor(ctx.tsChip, ctx.dmul), ctx.casing)
             c.Text = label
-            paint(c, "TextColor3", "flag", mode,
-                  (mode == "PerFlag") and (FLAG_COLORS[key] or WHITE) or Config.ESPFlagColor,
-                  Config.ESPFlagGradA, Config.ESPFlagGradB, Config.ESPGradientRotText or 90,
-                  Config.ESPGradientSpeed, ctx.now)
+            paint(c, "TextColor3", "flag", "PerFlag", FLAG_COLORS[key] or WHITE, nil, nil, 0, 0, ctx.now)
             c.TextTransparency = 1 - (ctx.fade or 1)
         end
-        if Config.ESPFlagStaring then
-            local head = char:FindFirstChild("Head")
-            local myPos = ctx.myRoot and ctx.myRoot.Position
-            if head and myPos then
-                local toMe = myPos - head.Position
-                if toMe.Magnitude > 1 then
-                    toMe = toMe.Unit
-                    local look = head.CFrame.LookVector
-                    if (look.X * toMe.X + look.Y * toMe.Y + look.Z * toMe.Z) > 0.965 then add("STARING", "[STARING]") end
-                end
-            end
-        end
-        if Config.ESPFlagDeflect and isDeflecting and isDeflecting(player) then add("DEFLECT", "[DEFLECT]") end
-        if Config.ESPFlagShield then
-            local wep = espWeapon(o, player)
-            if wep and (wep:find("Shield") or wep:find("Riot")) then add("SHIELD", "[SHIELD]") end
-        end
-        if Config.ESPFlagInvincible and isSpawnProtected and isSpawnProtected(player) then add("INVINCIBLE", "[INVINCIBLE]") end
-        if Config.ESPFlagLowHP and frac and frac <= 0.25 then add("LOW", "[LOW HP]") end
+        if isDeflecting and isDeflecting(player) then add("DEFLECT", "[DEFLECT]") end
+        if frac and frac <= 0.25 then add("LOW", "[LOW HP]") end
         u.flags.Visible = n > 0
         for i = n + 1, 5 do u.chips[i].Visible = false end
     end
@@ -3505,61 +2561,27 @@ local ESP = {}
         local nb = #o.bones
         for i = #u.skel + 1, nb do
             local f = mkFrame(_absLayer, 2)
-            f.AnchorPoint = Vector2.new(0.5, 0.5)
-            f.BackgroundTransparency = 0
-            f.BackgroundColor3 = WHITE
-            local s = Instance.new("UIStroke")
-            s.Color = INK; s.Thickness = 1; s.Transparency = 0
-            s.Parent = f
-            f.Visible = false
+            f.AnchorPoint = Vector2.new(0.5, 0.5); f.BackgroundTransparency = 0; f.BackgroundColor3 = WHITE; f.Visible = false
             u.skel[i] = f
         end
-        if (not o._skelPts) or (_espFrame - (o._skelFrame or -9)) >= 4 then
-            o._skelFrame = _espFrame
-            local pts = o._skelPts; if not pts then pts = {}; o._skelPts = pts end
-            for i, pair in ipairs(o.bones) do
-                local pa, pb = pair.a, pair.b
-                local e = pts[i]; if not e then e = {}; pts[i] = e end
-                if pa and pb and pa.Parent and pb.Parent then
-                    local s1, v1 = cam:WorldToViewportPoint(pa.Position)
-                    local s2, v2 = cam:WorldToViewportPoint(pb.Position)
-                    if v1 and v2 and s1.Z > 0 and s2.Z > 0 then
-                        e.ok = true; e.ax = s1.X; e.ay = s1.Y; e.bx = s2.X; e.by = s2.Y
-                    else e.ok = false end
-                else e.ok = false end
-            end
-        end
         local th = math.max(math.floor(Config.ESPSkeletonThickness or 1), 1)
-        local mode = Config.ESPSkeletonColorMode or "Solid"
-        local pts = o._skelPts
         for i = 1, nb do
-            local f = u.skel[i]
-            local e = pts and pts[i]
-            if f then
-                if e and e.ok then
-                    segment(f, e.ax, e.ay, e.bx, e.by, th, Config.ESPSkeletonTransparency or 0)
-                    paint(f, "BackgroundColor3", "skel", mode, Config.ESPSkeletonColor,
-                          Config.ESPSkeletonGradA, Config.ESPSkeletonGradB, 0, Config.ESPGradientSpeed, ctx.now)
+            local f = u.skel[i]; local pair = o.bones[i]
+            local pa, pb = pair.a, pair.b
+            if f and pa and pb and pa.Parent and pb.Parent then
+                local s1, v1 = cam:WorldToViewportPoint(pa.Position)
+                local s2, v2 = cam:WorldToViewportPoint(pb.Position)
+                if v1 and v2 and s1.Z > 0 and s2.Z > 0 then
+                    segment(f, s1.X, s1.Y, s2.X, s2.Y, th, 0)
                 else f.Visible = false end
-            end
+            elseif f then f.Visible = false end
         end
     end
     function drawAbsExtras(u, o, ctx, char, minX, minY, maxX, maxY)
         if Config.ESPTracers then
             local vp = ctx.vp
-            local ox, oy = vp.X * 0.5, vp.Y
-            local m = Config.ESPTracerOrigin
-            if m == "Top" then oy = 0
-            elseif m == "Middle" then oy = vp.Y * 0.5
-            elseif m == "Mouse" then
-                local mp; pcall(function() mp = UserInputService:GetMouseLocation() end)
-                if mp then ox, oy = mp.X, mp.Y end
-            end
-            segment(u.tracer, ox, oy, (minX + maxX) * 0.5, maxY,
-                    math.max(math.floor(Config.ESPTracerThickness or 1), 1), Config.ESPTracerTransparency or 0)
-            paint(u.tracer, "BackgroundColor3", "tracer", Config.ESPTracerColorMode or "Solid",
-                  Config.ESPTracerColor, Config.ESPTracerGradA, Config.ESPTracerGradB, 0,
-                  Config.ESPGradientSpeed, ctx.now)
+            segment(u.tracer, vp.X * 0.5, vp.Y, (minX + maxX) * 0.5, maxY, 1, 0)
+            paint(u.tracer, "BackgroundColor3", "tracer", "Solid", Config.ESPTracerColor or WHITE, nil, nil, 0, 0, ctx.now)
         else u.tracer.Visible = false end
         if Config.ESPHeadDot then
             local head = char:FindFirstChild("Head")
@@ -3567,39 +2589,18 @@ local ESP = {}
             if head then
                 local hsp, inv = cam:WorldToViewportPoint(head.Position)
                 if inv and hsp.Z > 0 then
-                    local r = math.clamp(Config.ESPHeadDotSize or 4, 2, 16)
+                    local r = 4
                     u.dot.Position = UDim2.fromOffset(math.floor(hsp.X), math.floor(hsp.Y))
                     u.dot.Size = UDim2.fromOffset(r * 2, r * 2)
-                    paint(u.dot, "BackgroundColor3", "mark", Config.ESPMarkColorMode or "Solid",
-                          Config.ESPMarkColor, Config.ESPMarkGradA, Config.ESPMarkGradB, 0,
-                          Config.ESPGradientSpeed, ctx.now)
+                    u.dot.BackgroundColor3 = Config.ESPMarkColor or WHITE
                     u.dot.Visible = true; ok = true
                 end
             end
             if not ok then u.dot.Visible = false end
         else u.dot.Visible = false end
-        if Config.ESPLookLine then
-            local head = char:FindFirstChild("Head")
-            local ok = false
-            if head then
-                local look = head.CFrame.LookVector
-                local p1 = head.Position
-                local p2 = p1 + look * math.clamp(Config.ESPLookLineLength or 8, 2, 32)
-                local s1, v1 = cam:WorldToViewportPoint(p1)
-                local s2, v2 = cam:WorldToViewportPoint(p2)
-                if v1 and v2 and s1.Z > 0 and s2.Z > 0 then
-                    segment(u.look, s1.X, s1.Y, s2.X, s2.Y, 1, 0)
-                    paint(u.look, "BackgroundColor3", "mark", Config.ESPMarkColorMode or "Solid",
-                          Config.ESPMarkColor, Config.ESPMarkGradA, Config.ESPMarkGradB, 0,
-                          Config.ESPGradientSpeed, ctx.now)
-                    ok = true
-                end
-            end
-            if not ok then u.look.Visible = false end
-        else u.look.Visible = false end
     end
     function renderPlayer(player, o)
-        local ctx  = _ctx
+        local ctx = _ctx
         local char = player.Character
         if not char or not o.root or not o.root.Parent then cleanESP(player); return end
         if not o.root:IsA("BasePart") then cleanESP(player); return end
@@ -3607,35 +2608,18 @@ local ESP = {}
         if not rootPos then cleanESP(player); return end
         if not o.ui then o.ui = buildTree(o); if not o.ui then return end end
         local u = o.ui
-        local vp     = ctx.vp
+        local vp = ctx.vp
         local myRoot = ctx.myRoot
-        local dist   = o._dist
-        if not dist then
-            dist = (myRoot and myRoot.Position and rootPos)
-                and (myRoot.Position - rootPos).Magnitude or 0
-        end
-        local oor = dist > Config.ESPMaxDistance
-        if (Config.ESPTeamCheck and isTeammate(player)) or (not isAlive(player)) then
-            hideAll(o); return
-        end
-        if (Config.ESPRadar or Config.ESPChamsVisSpli
--- ===================== FIN DE LO VISIBLE (PARTE 2) =====================
--- ======================================================================
---  PARTE 3/3  ·  BUILD LEGIT  ·  cierre del ESP + loop + UI
---  (continúa dentro del IIFE del ESP abierto en la PARTE 2)
--- ======================================================================
+        local dist = (myRoot and myRoot.Position and rootPos) and (myRoot.Position - rootPos).Magnitude or 0
+        local oor = dist > (Config.ESPMaxDistance or 1500)
+        if (Config.ESPTeamCheck and isTeammate(player)) or (not isAlive(player)) then hideAll(o); return end
+        if oor then hideAll(o); return end
 
-        -- visibilidad / fade
         local vis = true
-        if Config.ESPVisibleCheck or Config.ESPVisibleOnly then
-            vis = isVisible(rootPos)
-        end
-        if Config.ESPVisibleOnly and not vis then hideAll(o); return end
+        if Config.ESPVisibleCheck then vis = isVisible(rootPos) end
+        if Config.ESPVisibleCheck and not vis then hideAll(o); return end
 
-        local fade = 1
-        if Config.ESPFade ~= false then
-            fade = math.clamp((tick() - (o._fadeT or 0)) / 0.22, 0, 1)
-        end
+        local fade = math.clamp((tick() - (o._fadeT or 0)) / 0.22, 0, 1)
         o._allHidden = false
 
         local minX, minY, maxX, maxY = bbox(char, player)
@@ -3645,37 +2629,23 @@ local ESP = {}
 
         local hp, maxHp = getHealth(player)
         local frac = (maxHp > 0) and math.clamp(hp / maxHp, 0, 1) or 0
-        if o._lastFrac and frac < o._lastFrac - 0.001 then
-            o._ghostT = tick(); o._ghostFrac = o._lastFrac
-        end
-        o._lastFrac = frac
 
-        ctx.now    = tick()
-        ctx.dt     = ctx.dt or (1 / 60)
-        ctx.vp     = vp
-        ctx.myRoot = myRoot
-        ctx.boxW   = bw
-        ctx.boxH   = bh
-        ctx.fade   = fade
-        ctx.primary = (State.PrimaryTarget == player)
-        ctx.dmul   = distMul(dist)
-        ctx.face   = faceFor("Gotham")
-        ctx.casing = 1
+        ctx.now = tick(); ctx.dt = ctx.dt or (1 / 60); ctx.vp = vp; ctx.myRoot = myRoot
+        ctx.boxW = bw; ctx.boxH = bh; ctx.fade = fade
+        ctx.dmul = distMul(dist); ctx.face = faceFor("Gotham"); ctx.casing = 1
         ctx.tsName, ctx.tsInfo, ctx.tsHp, ctx.tsChip = 13, 12, 12, 11
 
-        u.root.Visible  = true
+        u.root.Visible = true
         u.root.Position = UDim2.fromOffset(minX, minY)
-        u.root.Size     = UDim2.fromOffset(bw, bh)
+        u.root.Size = UDim2.fromOffset(bw, bh)
 
-        -- caja
         local boxOn = Config.ESPBox
         u.box.Visible = boxOn and true or false
         if boxOn then
-            local style = Config.ESPBoxStyle or "Corner Brackets"
-            if style == "Corner Brackets" then
+            if (Config.ESPBoxStyle or "Corner Brackets") == "Corner Brackets" then
                 if u.boxStroke then u.boxStroke.Transparency = 1 end
                 if u.caseOut then u.caseOut.Transparency = 1 end
-                if u.caseIn  then u.caseIn.Transparency  = 1 end
+                if u.caseIn then u.caseIn.Transparency = 1 end
                 drawCorners(u, bw, bh, ctx)
             else
                 for i = 1, 8 do u.corners[i].Visible = false end
@@ -3685,39 +2655,26 @@ local ESP = {}
             for i = 1, 8 do u.corners[i].Visible = false end
         end
 
-        -- relleno
-        if Config.ESPBoxFill and boxOn then
-            u.fill.Visible = true
-            u.fill.BackgroundTransparency = 1 - math.clamp(Config.ESPBoxFillTransparency or 0.85, 0, 1)
-            paint(u.fill, "BackgroundColor3", "box", Config.ESPBoxColorMode or "Solid",
-                  Config.ESPBoxColor, Config.ESPBoxGradA, Config.ESPBoxGradB, 0,
-                  Config.ESPGradientSpeed, ctx.now)
-        else
-            u.fill.Visible = false
-        end
-
         drawHealth(u, o, ctx, frac, hp)
         drawText(u, o, player, ctx, dist, frac)
         drawFlags(u, o, player, ctx, char, frac)
         drawSkeleton(u, o, ctx)
         drawAbsExtras(u, o, ctx, char, minX, minY, maxX, maxY)
 
-        -- chams
         if Config.ESPChams then
             local hl = ensureCham(o, char)
             if hl then
-                hl.Enabled            = true
-                hl.FillColor          = Config.ESPChamsColor or (Config.ESPBoxColor or WHITE)
-                hl.OutlineColor       = Config.ESPChamsOutline or INK
-                hl.FillTransparency   = Config.ESPChamsTransparency or 0.5
+                hl.Enabled = true
+                hl.FillColor = Config.ESPChamsColor or (Config.ESPBoxColor or WHITE)
+                hl.OutlineColor = INK
+                hl.FillTransparency = 0.5
                 hl.OutlineTransparency = 0
             end
         elseif o.cham and o.cham.Enabled then
             o.cham.Enabled = false
         end
-    end -- renderPlayer
+    end
 
-    -- ===================== LOOP DEL ESP =====================
     function espUpdate(dt)
         _espFrame += 1
         local c2 = workspace.CurrentCamera
@@ -3727,17 +2684,13 @@ local ESP = {}
         _ctx.vp = cam.ViewportSize
         local myChar = LocalPlayer.Character
         _ctx.myRoot = myChar and myChar:FindFirstChild("HumanoidRootPart")
-        _createBudget = CREATE_BUDGET_PER_FRAME
 
         if not Config.ESP then
             for _, o in pairs(State.ESPObjects) do hideAll(o) end
-            if _espFrame % 40 == 0 then
-                for p in pairs(State.ESPObjects) do cleanESP(p) end
-            end
+            if _espFrame % 40 == 0 then for p in pairs(State.ESPObjects) do cleanESP(p) end end
             return
         end
 
-        -- asegurar árboles
         for _, p in ipairs(getSafePlayers()) do
             if p ~= LocalPlayer and p.Character then
                 local o = State.ESPObjects[p]
@@ -3745,23 +2698,7 @@ local ESP = {}
                 if not o or not o.root or o.root.Parent ~= root then buildESP(p) end
             end
         end
-        for p in pairs(State.ESPObjects) do
-            if not p.Character then cleanESP(p) end
-        end
-
-        -- objetivo primario (más cercano) para énfasis
-        State.PrimaryTarget = nil
-        local bestD
-        local mr = _ctx.myRoot
-        if mr then
-            for _, p in ipairs(getSafePlayers()) do
-                local o = State.ESPObjects[p]
-                if o and o.root and o.root.Parent then
-                    local d = (mr.Position - o.root.Position).Magnitude
-                    if not bestD or d < bestD then bestD = d State.PrimaryTarget = p end
-                end
-            end
-        end
+        for p in pairs(State.ESPObjects) do if not p.Character then cleanESP(p) end end
 
         for _, p in ipairs(getSafePlayers()) do
             local o = State.ESPObjects[p]
@@ -3773,236 +2710,146 @@ local ESP = {}
     _renderConn = RunService.Heartbeat:Connect(function(dt)
         local interval = tonumber(Config.ESPUpdateInterval) or 0
         if interval <= 0 or not Config.ESPPerfMode then
-            espUpdate(dt)
+            pcall(espUpdate, dt)
         else
             _espAcc += dt
-            if _espAcc >= interval then
-                local step = _espAcc
-                _espAcc = 0
-                espUpdate(step)
-            end
+            if _espAcc >= interval then local step = _espAcc; _espAcc = 0; pcall(espUpdate, step) end
         end
     end)
 
-    -- hooks de jugadores
     local function hookChar(p)
-        p.CharacterAdded:Connect(function()
-            task.wait(0.2)
-            if Config.ESP then buildESP(p) end
-        end)
+        p.CharacterAdded:Connect(function() task.wait(0.2) if Config.ESP then buildESP(p) end end)
     end
     Players.PlayerAdded:Connect(hookChar)
-    for _, p in ipairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer then hookChar(p) end
-    end
+    for _, p in ipairs(Players:GetPlayers()) do if p ~= LocalPlayer then hookChar(p) end end
     Players.PlayerRemoving:Connect(cleanESP)
     LocalPlayer.CharacterAdded:Connect(function()
         task.wait(0.3)
         for p in pairs(State.ESPObjects) do cleanESP(p) end
     end)
 
-    getgenv()._ShakoESP = ESP          -- export para la UI
+    getgenv()._ShakoESP = ESP
     ESP.rebuildAll()
-end)() -- cierre IIFE ESP
+end)()
 
 -- ======================================================================
---  UI  ·  solo Aimbot / ESP / World / Settings
+--  UI  ·  solo Aimbot / ESP / World / Settings  (una sola columna)
 -- ======================================================================
 local TabAimbot = Window:AddTab("Aimbot")
 local TabESP    = Window:AddTab("ESP")
 local TabWorld  = Window:AddTab("World")
 local TabSet    = Window:AddTab("Settings")
 
--- ==================== AIMBOT ====================
+-- AIMBOT
 do
     local gb = TabAimbot:AddLeftGroupbox("Aimbot")
-    gb:AddToggle("AimbotEnabled", {
-        Text = "Aimbot", Default = config.AimbotEnabled,
-        Callback = function(v)
-            config.AimbotEnabled = v
-            if v then StartAimbot() else StopAimbot() end
-        end,
-    })
-    gb:AddDropdown("AimbotKeyMode", {
-        Text = "Modo", Values = { "Hold", "Toggle", "Always" },
-        Default = config.AimbotKeyMode or "Hold",
-        Callback = function(v) config.AimbotKeyMode = v end,
-    })
-    gb:AddKeybind("AimbotKey", {
-        Text = "Tecla aim", Default = Enum.KeyCode.E,
-        Callback = function() end,
-    })
-    gb:AddSlider("AimbotFOV", {
-        Text = "FOV", Min = 20, Max = 800, Default = config.AimbotFOV or 400, Rounding = 0,
-        Callback = function(v) config.AimbotFOV = v end,
-    })
-    gb:AddSlider("AimbotSmooth", {
-        Text = "Smooth", Min = 0.05, Max = 1, Default = config.AimbotSmooth or 0.9, Rounding = 2,
-        Callback = function(v) config.AimbotSmooth = v end,
-    })
-    gb:AddDropdown("AimbotPart", {
-        Text = "Parte", Values = { "Head", "UpperTorso", "HumanoidRootPart" },
-        Default = config.AimbotPart or "Head",
-        Callback = function(v) config.AimbotPart = v end,
-    })
-    gb:AddToggle("AimbotTeamCheck", {
-        Text = "Ignorar equipo", Default = config.AimbotTeamCheck ~= false,
-        Callback = function(v) config.AimbotTeamCheck = v end,
-    })
-    gb:AddToggle("AimbotWallCheck", {
-        Text = "Chequeo de pared", Default = config.AimbotWallCheck,
-        Callback = function(v) config.AimbotWallCheck = v end,
-    })
-    gb:AddToggle("AimbotShowFOV", {
-        Text = "Mostrar FOV", Default = config.AimbotShowFOV ~= false,
-        Callback = function(v) config.AimbotShowFOV = v end,
-    })
+    gb:AddToggle("AimbotEnabled", { Text = "Aimbot", Default = config.AimbotEnabled,
+        Callback = function(v) config.AimbotEnabled = v if v then StartAimbot() else StopAimbot() end end })
+    gb:AddDropdown("AimbotKeyMode", { Text = "Modo", Values = { "Hold", "Toggle", "Always" },
+        Default = config.AimbotKeyMode or "Hold", Callback = function(v) config.AimbotKeyMode = v end })
+    gb:AddKeybind("AimbotKey", { Text = "Tecla aim", Default = Enum.KeyCode.E, Callback = function() end })
+    gb:AddSlider("AimbotFOV", { Text = "FOV", Min = 20, Max = 800, Default = config.AimbotFOV or 400, Rounding = 0,
+        Callback = function(v) config.AimbotFOV = v end })
+    gb:AddSlider("AimbotSmooth", { Text = "Smooth", Min = 0.05, Max = 1, Default = config.AimbotSmooth or 0.9, Rounding = 2,
+        Callback = function(v) config.AimbotSmooth = v end })
+    gb:AddDropdown("AimbotPart", { Text = "Parte", Values = { "Head", "UpperTorso", "HumanoidRootPart" },
+        Default = config.AimbotPart or "Head", Callback = function(v) config.AimbotPart = v end })
+    gb:AddToggle("AimbotTeamCheck", { Text = "Ignorar equipo", Default = config.AimbotTeamCheck ~= false,
+        Callback = function(v) config.AimbotTeamCheck = v end })
+    gb:AddToggle("AimbotWallCheck", { Text = "Chequeo de pared", Default = config.AimbotWallCheck,
+        Callback = function(v) config.AimbotWallCheck = v end })
+    gb:AddToggle("AimbotShowFOV", { Text = "Mostrar FOV", Default = config.AimbotShowFOV ~= false,
+        Callback = function(v) config.AimbotShowFOV = v end })
 
-    local gb2 = TabAimbot:AddRightGroupbox("Silent Aim")
-    gb2:AddToggle("SilentAimEnabled", {
-        Text = "Silent Aim", Default = false,
-        Callback = function(v)
-            if v then StartSilentAim() else StopSilentAim() end
-        end,
-    })
-    gb2:AddSlider("SilentFOV", {
-        Text = "FOV", Min = 20, Max = 1000, Default = config.SilentFOV or 300, Rounding = 0,
-        Callback = function(v) config.SilentFOV = v end,
-    })
-    gb2:AddDropdown("SilentHitPart", {
-        Text = "Hit part", Values = { "Head", "Torso", "HitboxHead" }, Default = "Head",
-        Callback = function(v) config.SilentHitPart = v end,
-    })
-    gb2:AddToggle("SilentPredict", {
-        Text = "Predicción", Default = false,
-        Callback = function(v) config.SilentPredict = v end,
-    })
-    gb2:AddToggle("SilentTeamCheck", {
-        Text = "Ignorar equipo", Default = true,
-        Callback = function(v) config.SilentTeamCheck = v end,
-    })
-    gb2:AddToggle("ExtendMeleeRange", {
-        Text = "Extender melee", Default = false,
-        Callback = function(v) config.ExtendMeleeRange = v end,
-    })
-    gb2:AddToggle("SilentShowFOV", {
-        Text = "Mostrar FOV", Default = true,
-        Callback = function(v) config.SilentShowFOV = v end,
-    })
+    local gb2 = TabAimbot:AddLeftGroupbox("Silent Aim")
+    gb2:AddToggle("SilentAimEnabled", { Text = "Silent Aim", Default = false,
+        Callback = function(v) if v then StartSilentAim() else StopSilentAim() end end })
+    gb2:AddSlider("SilentFOV", { Text = "FOV", Min = 20, Max = 1000, Default = config.SilentFOV or 300, Rounding = 0,
+        Callback = function(v) config.SilentFOV = v end })
+    gb2:AddDropdown("SilentHitPart", { Text = "Hit part", Values = { "Head", "Torso", "HitboxHead" }, Default = "Head",
+        Callback = function(v) config.SilentHitPart = v end })
+    gb2:AddToggle("SilentPredict", { Text = "Predicción", Default = false, Callback = function(v) config.SilentPredict = v end })
+    gb2:AddToggle("SilentTeamCheck", { Text = "Ignorar equipo", Default = true, Callback = function(v) config.SilentTeamCheck = v end })
+    gb2:AddToggle("ExtendMeleeRange", { Text = "Extender melee", Default = false, Callback = function(v) config.ExtendMeleeRange = v end })
+    gb2:AddToggle("SilentShowFOV", { Text = "Mostrar FOV", Default = true, Callback = function(v) config.SilentShowFOV = v end })
 end
 
--- ==================== ESP ====================
+-- ESP
 do
     local gb = TabESP:AddLeftGroupbox("ESP")
-    gb:AddToggle("ESPEnabled", {
-        Text = "ESP", Default = config.ESPEnabled,
+    gb:AddToggle("ESPEnabled", { Text = "ESP", Default = config.ESPEnabled,
         Callback = function(v)
-            config.ESPEnabled = v
-            config.ESP = v
+            config.ESPEnabled = v config.ESP = v
             local e = getgenv()._ShakoESP
             if e and e.rebuildAll then pcall(e.rebuildAll) end
-        end,
-    })
+        end })
     gb:AddToggle("ESPBox", { Text = "Caja", Default = true, Callback = function(v) config.ESPShowBox = v end })
-    gb:AddDropdown("ESPBoxStyle", {
-        Text = "Estilo caja", Values = { "Corner Brackets", "Full Box" }, Default = "Corner Brackets",
-        Callback = function(v) config.ESPBoxStyle = v end,
-    })
+    gb:AddDropdown("ESPBoxStyle", { Text = "Estilo caja", Values = { "Corner Brackets", "Full Box" }, Default = "Corner Brackets",
+        Callback = function(v) config.ESPBoxStyle = v end })
     gb:AddToggle("ESPName", { Text = "Nombre", Default = true, Callback = function(v) config.ESPShowName = v end })
     gb:AddToggle("ESPDistance", { Text = "Distancia", Default = true, Callback = function(v) config.ESPShowDist = v end })
     gb:AddToggle("ESPHealthBar", { Text = "Barra de vida", Default = true, Callback = function(v) config.ESPShowHP = v end })
-    gb:AddToggle("ESPHealthNumber", { Text = "Número de vida", Default = false, Callback = function(v) config.ESPHealthNumberMode = v and "Always" or "Off" end })
+    gb:AddToggle("ESPHealthNumber", { Text = "Número de vida", Default = false,
+        Callback = function(v) config.ESPHealthNumberMode = v and "Always" or "Off" end })
     gb:AddToggle("ESPSkeleton", { Text = "Esqueleto", Default = false, Callback = function(v) config.ESPSkeleton = v end })
     gb:AddToggle("ESPTracers", { Text = "Tracers", Default = false, Callback = function(v) config.ESPTracers = v end })
     gb:AddToggle("ESPHeadDot", { Text = "Punto en la cabeza", Default = false, Callback = function(v) config.ESPHeadDot = v end })
     gb:AddToggle("ESPChams", { Text = "Chams", Default = false, Callback = function(v) config.ESPChams = v end })
 
-    local gb2 = TabESP:AddRightGroupbox("Ajustes ESP")
-    gb2:AddSlider("ESPMaxDistance", {
-        Text = "Distancia máx", Min = 50, Max = 5000, Default = 100000 and 1500 or 1500, Rounding = 0,
-        Callback = function(v) config.ESPMaxDistance = v end,
-    })
+    local gb2 = TabESP:AddLeftGroupbox("Ajustes ESP")
+    gb2:AddSlider("ESPMaxDistance", { Text = "Distancia máx", Min = 50, Max = 5000, Default = 1500, Rounding = 0,
+        Callback = function(v) config.ESPMaxDistance = v end })
     gb2:AddToggle("ESPTeamCheck", { Text = "Ignorar equipo", Default = false, Callback = function(v) config.ESPTeamCheck = v end })
     gb2:AddToggle("ESPPerfMode", { Text = "Modo rendimiento", Default = true, Callback = function(v) config.ESPPerfMode = v end })
-    gb2:AddSlider("ESPUpdateInterval", {
-        Text = "Intervalo update", Min = 0.02, Max = 0.2, Default = 0.05, Rounding = 2,
-        Callback = function(v) config.ESPUpdateInterval = v end,
-    })
-    gb2:AddSlider("ESPBoxThickness", {
-        Text = "Grosor caja", Min = 1, Max = 4, Default = 2, Rounding = 0,
-        Callback = function(v) config.ESPBoxThickness = v end,
-    })
+    gb2:AddSlider("ESPUpdateInterval", { Text = "Intervalo update", Min = 0.02, Max = 0.2, Default = 0.05, Rounding = 2,
+        Callback = function(v) config.ESPUpdateInterval = v end })
+    gb2:AddSlider("ESPBoxThickness", { Text = "Grosor caja", Min = 1, Max = 4, Default = 2, Rounding = 0,
+        Callback = function(v) config.ESPBoxThickness = v end })
     gb2:AddToggle("ESPVisibleCheck", { Text = "Chequeo de visibilidad", Default = false, Callback = function(v) config.ESPVisibleCheck = v end })
 end
 
--- ==================== WORLD ====================
+-- WORLD
 do
     local gb = TabWorld:AddLeftGroupbox("Mundo")
-    gb:AddToggle("Fullbright", {
-        Text = "Fullbright", Default = false,
-        Callback = function(v) config.Fullbright = v ApplyVisuals() end,
-    })
-    gb:AddToggle("NoFog", {
-        Text = "Sin niebla", Default = true,
-        Callback = function(v) config.NoFog = v ApplyVisuals() end,
-    })
-    gb:AddToggle("WallXray", {
-        Text = "Ver a través de paredes", Default = false,
-        Callback = function(v) config.WallXray = v ApplyVisuals() end,
-    })
-    gb:AddToggle("MapColorEnabled", {
-        Text = "Colorear mapa", Default = false,
-        Callback = function(v) config.MapColorEnabled = v ApplyVisuals() end,
-    })
-    gb:AddToggle("RemoveTextures", {
-        Text = "Quitar texturas", Default = false,
-        Callback = function(v) config.RemoveTextures = v ApplyVisuals() end,
-    })
-    gb:AddSlider("Brightness", {
-        Text = "Brillo", Min = 0, Max = 5, Default = 2, Rounding = 1,
-        Callback = function(v) config.Brightness = v config.LightingOverride = true ApplyVisuals() end,
-    })
+    gb:AddToggle("Fullbright", { Text = "Fullbright", Default = false, Callback = function(v) config.Fullbright = v ApplyVisuals() end })
+    gb:AddToggle("NoFog", { Text = "Sin niebla", Default = true, Callback = function(v) config.NoFog = v ApplyVisuals() end })
+    gb:AddToggle("WallXray", { Text = "Ver a través de paredes", Default = false, Callback = function(v) config.WallXray = v ApplyVisuals() end })
+    gb:AddToggle("MapColorEnabled", { Text = "Colorear mapa", Default = false, Callback = function(v) config.MapColorEnabled = v ApplyVisuals() end })
+    gb:AddToggle("RemoveTextures", { Text = "Quitar texturas", Default = false, Callback = function(v) config.RemoveTextures = v ApplyVisuals() end })
+    gb:AddSlider("Brightness", { Text = "Brillo", Min = 0, Max = 5, Default = 2, Rounding = 1,
+        Callback = function(v) config.Brightness = v config.LightingOverride = true ApplyVisuals() end })
     gb:AddButton("Reset visuales", function() ResetVisuals() end)
 
-    local gb2 = TabWorld:AddRightGroupbox("Color de mapa")
+    local gb2 = TabWorld:AddLeftGroupbox("Color de mapa")
     gb2:AddSlider("MapColorR", { Text = "R", Min = 0, Max = 255, Default = 80, Rounding = 0, Callback = function(v) config.MapColorR = v ApplyVisuals() end })
     gb2:AddSlider("MapColorG", { Text = "G", Min = 0, Max = 255, Default = 80, Rounding = 0, Callback = function(v) config.MapColorG = v ApplyVisuals() end })
     gb2:AddSlider("MapColorB", { Text = "B", Min = 0, Max = 255, Default = 100, Rounding = 0, Callback = function(v) config.MapColorB = v ApplyVisuals() end })
-    gb2:AddSlider("WallTransparency", {
-        Text = "Transparencia pared", Min = 0, Max = 0.95, Default = 0.55, Rounding = 2,
-        Callback = function(v) config.WallTransparency = v ApplyVisuals() end,
-    })
+    gb2:AddSlider("WallTransparency", { Text = "Transparencia pared", Min = 0, Max = 0.95, Default = 0.55, Rounding = 2,
+        Callback = function(v) config.WallTransparency = v ApplyVisuals() end })
 end
 
--- ==================== SETTINGS ====================
+-- SETTINGS
 do
     local gb = TabSet:AddLeftGroupbox("Ajustes")
-    gb:AddKeybind("MenuKey", {
-        Text = "Tecla del menú", Default = Enum.KeyCode.RightShift,
+    gb:AddKeybind("MenuKey", { Text = "Tecla del menú", Default = Enum.KeyCode.RightShift,
         Callback = function(v)
             local name = (typeof(v) == "EnumItem") and v.Name or tostring(v)
             config.MenuKey = name
-            pcall(function() Library.ToggleKeybind = name end)
-        end,
-    })
-    gb:AddButton("Guardar config", function()
-        pcall(function() SaveManager:Save("legit") end)
-        Notify("Config", "guardado")
-    end)
-    gb:AddButton("Cargar config", function()
-        pcall(function() SaveManager:Load("legit") end)
-        Notify("Config", "cargado")
-    end)
-
-    local gb2 = TabSet:AddRightGroupbox("Info")
-    gb2:AddLabel("shako.win · LEGIT")
-    gb2:AddLabel("solo aimbot + esp")
+            pcall(function()
+                local ok, kc = pcall(function() return Enum.KeyCode[name] end)
+                Library.ToggleKeybind = (ok and kc) or name
+            end)
+        end })
+    gb:AddButton("Guardar config", function() pcall(function() SaveManager:Save("legit") end) Notify("Config", "guardado") end)
+    gb:AddButton("Cargar config", function() pcall(function() SaveManager:Load("legit") end) Notify("Config", "cargado") end)
 end
 
--- ======================================================================
---  BOOT FINAL
--- ======================================================================
+-- BOOT FINAL
 pcall(ApplyVisuals)
+pcall(function()
+    local ok, kc = pcall(function() return Enum.KeyCode[config.MenuKey or "RightShift"] end)
+    if ok and kc then Library.ToggleKeybind = kc end
+end)
 getgenv()._ShakoUIReady = true
 
 task.spawn(function()
