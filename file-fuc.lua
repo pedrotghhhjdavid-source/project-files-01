@@ -1,24 +1,23 @@
 --[[=====================================================================
-  SHAKO COMPAT LAYER v1.1  ·  Delta / Android / executor-agnostic
+  SHAKO · RIO + CAPA COMPAT v1.2  ·  Delta / Android / executor-agnostic
   ---------------------------------------------------------------------
-  USO:
-    Opción A (recomendada): guarda esto como shako_compat.txt y ejecútalo
-                            ANTES de tu script. Nada más.
-    Opción B: pega TODO este bloque ARRIBA de tu script, en el mismo archivo.
-
-  NO toca tu código. NO necesitas editar ni una línea del original.
+  MODO 1 ARCHIVO:  LoadRioFromUrl = false  -> pegá tu script abajo del todo
+  MODO 2 ARCHIVOS: LoadRioFromUrl = true   -> subí rio.lua aparte a GitHub
   ---------------------------------------------------------------------
-  ARREGLA:
-   - RightShift imposible de pulsar en móvil      -> botón MENU (simula la tecla)
-   - mousemoverel no rota cámara en táctil         -> aim propio por cámara
-   - Drawing ausente en algunos executors          -> shim Line/Text/Circle/Triangle
-   - writefile ausente (SaveManager rompía)        -> stubs de file API en memoria
-   - mouse1click/mouse1press ausente               -> polyfill VirtualInputManager
-   - cambio de slot por tecla no responde          -> wrap de ragePressSlot + EquipItem
-   - HttpGet falla en 4G                           -> 3 reintentos
-   - FPS bajo / crashes en móvil                   -> defaults móvil + AA/void reducidos
-   - quedas pegado tras rage/void                  -> botón STOP con restauración de CFrame
+  Nada de tu código original fue modificado.
 ======================================================================]]
+
+--=========================== AJUSTES ===========================
+local CFG = {
+    Buttons              = true,   -- botones MENU / AIM / STOP en pantalla
+    MobileDefaults       = true,   -- perfiles de rendimiento en móvil
+    OverrideTargetPicker = true,   -- apuntar al centro de pantalla (coherente con el FOV)
+    FpsCap               = 60,     -- nil para no tocar el FPS
+
+    LoadRioFromUrl       = false,  -- true = descarga tu script desde GitHub
+    RioUrl               = "https://raw.githubusercontent.com/TU_USUARIO/TU_REPO/main/rio.lua",
+}
+--===============================================================
 
 local SHC = {}
 getgenv()._SHC = SHC
@@ -34,7 +33,7 @@ SHC.touch  = UIS.TouchEnabled
 SHC.mobile = UIS.TouchEnabled and not UIS.KeyboardEnabled
 if not SHC.mobile and UIS.TouchEnabled and UIS.MouseEnabled == false then SHC.mobile = true end
 
-SHC.overrideTargetPicker = true
+SHC.overrideTargetPicker = CFG.OverrideTargetPicker
 
 local function shcNotify(txt)
     pcall(function()
@@ -94,8 +93,9 @@ if SHC.touch and type(mousemoverel) == "function" then
     mousemoverel = function() end
 end
 
--- FPS cap sano en móvil
-if SHC.mobile and type(setfpscap) == "function" then pcall(setfpscap, 60) end
+if SHC.mobile and CFG.FpsCap and type(setfpscap) == "function" then
+    pcall(setfpscap, CFG.FpsCap)
+end
 
 SHC.hasHook   = type(hookfunction) == "function"
 SHC.hasHookMM = type(hookmetamethod) == "function"
@@ -240,8 +240,13 @@ if not Drawing then
 end
 
 --================= 3) OVERLAY (MENU / AIM / STOP) =================
-do
+if CFG.Buttons then
     local POS_FILE = "shako_mobtools.txt"
+
+    -- anti doble ejecución (no duplica botones)
+    if getgenv()._SHC and getgenv()._SHC.gui then
+        pcall(function() getgenv()._SHC.gui:Destroy() end)
+    end
 
     local function uiParent()
         local ok, h = pcall(gethui)
@@ -511,7 +516,7 @@ task.spawn(function()
     local cfg = getgenv().config
     if type(cfg) ~= "table" then return end
 
-    if SHC.mobile then
+    if CFG.MobileDefaults and SHC.mobile then
         cfg.ESPPerfMode        = true
         cfg.ESPUpdateInterval  = math.max(tonumber(cfg.ESPUpdateInterval) or 0.05, 0.08)
         cfg.ESPMaxPlayers      = math.min(tonumber(cfg.ESPMaxPlayers) or 8, 6)
@@ -528,8 +533,7 @@ task.spawn(function()
         cfg.AimbotShowFOV      = true
     end
 
-    -- picker propio (centro = centro de pantalla) para que el aimbot del menú
-    -- y el silencio apunten igual que el círculo FOV dibujado
+    -- picker propio (centro = centro de pantalla)
     task.spawn(function()
         for _ = 1, 300 do
             if type(getgenv().GetAimbotTargetRivals) == "function" then break end
@@ -564,4 +568,13 @@ task.spawn(function()
     shcNotify(SHC.mobile and "capa móvil lista · MENU / AIM / STOP" or "capa compat lista")
 end)
 
--- FIN DE LA CAPA DE COMPATIBILIDAD
+--============= 7) CARGA DEL SCRIPT RIO (modo 2 archivos) =============
+if CFG.LoadRioFromUrl then
+    local ok, err = pcall(function()
+        return loadstring(game:HttpGet(CFG.RioUrl))()
+    end)
+    if not ok then shcNotify("rio.lua: " .. tostring(err)) end
+end
+
+-- FIN DE LA CAPA
+-- ====== A PARTIR DE ACÁ VA TU SCRIPT (si LoadRioFromUrl = false) ======
