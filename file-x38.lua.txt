@@ -1,24 +1,40 @@
 -- ==========================================================
---  UNNAMED — BYPASS TOTAL  (FIX: "HttpGet is not a valid member")
+--  UNNAMED — BYPASS TOTAL (v4 — arregla "no key found" de Luarmor)
 -- ==========================================================
 local KEY  = "iyzOltc1qalrd99hju33uagsf8927k7xfxr423gr93gnjz8"
 local HWID = "unnamed-cracked-device"
+local URL  = "https://raw.githubusercontent.com/smi9/UnnamedCheats/refs/heads/main/loader.lua"
 
 local g = (getgenv and getgenv()) or _G
-local wrap = newcclosure or function(f) return f end
 
--- 1) Forzamos key/HWID en todos los sitios donde el loader los busca
-g.script_key  = KEY
-g.UnnamedKey  = KEY
-g.unnamed_key = KEY
-g.hwid        = HWID
-g.HWID        = HWID
-g.hwid_crack  = HWID
-g.gethwid     = function() return HWID end
-g.getHWID     = function() return HWID end
-script_key    = KEY
+print("[Unnamed] Juego -> PlaceId:", game.PlaceId, "| GameId:", game.GameId)
 
--- 2) Convierte cualquier respuesta "inválido" -> "válido"
+-- 1) La clave en TODOS los entornos posibles (Luarmor la busca como script_key)
+local function put(env, name, value)
+    if type(env) == "table" then
+        pcall(function() env[name] = value end)
+    end
+end
+
+local envs = { g, _G, shared, (getfenv and getfenv(0)) or nil }
+for _, env in ipairs(envs) do
+    put(env, "script_key",  KEY)
+    put(env, "scriptKey",   KEY)
+    put(env, "key",         KEY)
+    put(env, "UnnamedKey",  KEY)
+    put(env, "unnamed_key", KEY)
+    put(env, "hwid",        HWID)
+    put(env, "HWID",        HWID)
+    put(env, "hwid_crack",  HWID)
+    put(env, "gethwid", function() return HWID end)
+    put(env, "getHWID", function() return HWID end)
+end
+g.script_key = KEY
+script_key = KEY
+
+print("[Unnamed] script_key puesto =", tostring(script_key))
+
+-- 2) fake
 local function fake(res)
     if type(res) ~= "string" or res == "" then return res end
     if res:find("{", 1, true) then
@@ -39,109 +55,88 @@ local function fake(res)
     return res
 end
 
--- 3) Localizamos HttpGet SIN leer game.HttpGet de golpe (eso era lo que petaba)
-local rawFn = nil
-if type(g.HttpGet) == "function" then
-    rawFn = g.HttpGet
-elseif type(HttpGet) == "function" then
-    rawFn = HttpGet
-else
-    local ok, val = pcall(function() return game.HttpGet end)
-    if ok and type(val) == "function" then rawFn = val end
-end
-local rawIsGlobal = (rawFn ~= nil) and (rawFn == g.HttpGet or rawFn == HttpGet)
-
-local function callRaw(url)
-    if not rawFn then return nil end
-    local order = rawIsGlobal and { {url}, {game, url} } or { {game, url}, {url} }
-    for _, args in ipairs(order) do
-        local ok, r = pcall(rawFn, table.unpack(args))
-        if ok and type(r) == "string" then return r end
-    end
-    return nil
-end
-
--- 4) Hook del GET (envuelve todo lo posible + fallback a request)
+-- 3) hooks http (request)
 local req = (syn and syn.request) or (http and http.request) or http_request or request
-
-local function hookedGet(a, b)
-    local url = (type(a) == "string") and a or b
-    local res = callRaw(url)
-    if res == nil and req then
-        local ok, r = pcall(req, { Url = url, Method = "GET" })
-        if ok and r then res = r.Body end
-    end
-    if res == nil then
-        local ok, r = pcall(function() return game:HttpGet(url) end)
-        if ok then res = r end
-    end
-    return fake(res)
-end
-local hookedGetC = wrap(hookedGet)
-
-g.HttpGet = hookedGetC
-pcall(function() game.HttpGet = hookedGetC end)
-
--- Por si el executor ignora la asignación, lo forzamos en el metatable
-pcall(function()
-    local mt = getrawmetatable(game)
-    if mt and type(mt.__index) == "function" then
-        local old = mt.__index
-        if setreadonly then setreadonly(mt, false) end
-        mt.__index = wrap(function(self, key)
-            if self == game and key == "HttpGet" then return hookedGetC end
-            return old(self, key)
-        end)
-        if setreadonly then setreadonly(mt, true) end
-    end
-end)
-
--- HttpGetAsync (solo si existe)
-local rawAsync = nil
-do
-    local ok, val = pcall(function() return game.HttpGetAsync end)
-    if ok and type(val) == "function" then rawAsync = val end
-end
-if rawAsync then
-    local hookedAsync = wrap(function(self, url, ...)
-        return fake(rawAsync(self, url, ...))
-    end)
-    pcall(function() game.HttpGetAsync = hookedAsync end)
-    g.HttpGetAsync = hookedAsync
-end
-
--- 5) Hook de request / http_request (el loader suele usar esto para validar)
 if req then
     local function hooked(o)
-        local r = req(o)
+        local ok, r = pcall(req, o)
+        if not ok then return r end
         if r and r.Body then r.Body = fake(r.Body) end
         return r
     end
-    if syn and syn.request then syn.request = hooked
-    elseif http and http.request then http.request = hooked
-    elseif http_request then http_request = hooked
-    elseif request then request = hooked end
+    if syn and syn.request then syn.request = hooked end
+    if http and http.request then http.request = hooked end
+    if http_request then http_request = hooked end
+    if request then request = hooked end
     g.request = hooked
 end
 
+-- 3b) hooks http (HttpGet)
+local function makeHook(orig, needsSelf)
+    return function(a, b)
+        local url = (type(a) == "string") and a or b
+        local ok, res
+        if needsSelf then ok, res = pcall(orig, game, url) else ok, res = pcall(orig, url) end
+        if not ok or type(res) ~= "string" then
+            if needsSelf then ok, res = pcall(orig, url) else ok, res = pcall(orig, game, url) end
+        end
+        if not ok then res = nil end
+        return fake(res)
+    end
+end
+
+local origGlobal = g.HttpGet or HttpGet
+local okG, origGame = pcall(function() return game.HttpGet end)
+origGame = (okG and type(origGame) == "function") and origGame or nil
+
+if type(origGlobal) == "function" then
+    g.HttpGet = makeHook(origGlobal, false)
+elseif origGame then
+    g.HttpGet = makeHook(origGame, true)
+end
+if origGame then
+    pcall(function() game.HttpGet = makeHook(origGame, true) end)
+elseif type(origGlobal) == "function" then
+    pcall(function() game.HttpGet = g.HttpGet end)
+end
+
+-- 4) Forzar que todo chunk cargado con loadstring use el entorno de getgenv
+--    (asi Luarmor SI ve script_key)
+if type(loadstring) == "function" and type(setfenv) == "function" then
+    local oldLoadstring = loadstring
+    loadstring = function(chunk, ...)
+        local fn, err = oldLoadstring(chunk, ...)
+        if fn then pcall(setfenv, fn, g) end
+        return fn, err
+    end
+    g.loadstring = loadstring
+end
+
+-- 5) permitir re-ejecutar el loader
+g.UC_LOADED = false
+
 print("[Unnamed] Bypass activo -> sin key, sin HWID, sin Discord")
 
--- 6) Cargamos el loader con el GET ya parcheado
-local URL = "https://raw.githubusercontent.com/smi9/UnnamedCheats/refs/heads/main/loader.lua"
-local src = callRaw(URL)
-if not src then
-    local ok, r = pcall(function() return game:HttpGet(URL) end)
-    if ok then src = r end
+-- 6) descargar y ejecutar
+local function rawGet(url)
+    if type(origGlobal) == "function" then
+        local ok, r = pcall(origGlobal, url); if ok and r then return r end
+    end
+    if origGame then
+        local ok, r = pcall(origGame, game, url); if ok and r then return r end
+    end
+    local ok, r = pcall(function() return game:HttpGet(url) end); if ok then return r end
+    return nil
 end
 
-if src then
-    local fn, err = loadstring(src)
-    if fn then
-        local ok, e = pcall(fn)
-        if not ok then warn("[Unnamed] Error al ejecutar el loader:", e) end
-    else
-        warn("[Unnamed] Error de sintaxis del loader:", err)
-    end
-else
-    warn("[Unnamed] No se pudo descargar el loader.")
-end
+local src = rawGet(URL)
+if not src then warn("[Unnamed] No se pudo descargar el loader.") return end
+print("[Unnamed] Loader descargado:", #src, "bytes")
+
+local fn, err = loadstring(src)
+if not fn then warn("[Unnamed] Error de sintaxis:", err) return end
+if type(setfenv) == "function" then pcall(setfenv, fn, g) end
+
+print("[Unnamed] Ejecutando loader...")
+local ok, e = pcall(fn)
+print("[Unnamed] Loader salio:", ok, e)
