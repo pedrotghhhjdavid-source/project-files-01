@@ -1,7 +1,7 @@
 -- ==========================================================
 --  UNNAMED / RIVALS — v7 (no toca el código de Luraph)
 -- ==========================================================
-local KEY = "iyzOltc1qalrd99hju33uagsf8927k7xfxr423gr93gnjz8"
+local KEY = "iyzOMzPfKIksNxQKtKJOguHKasPsLLjo"
 local URL = "https://raw.githubusercontent.com/smi9/UnnamedCheats/refs/heads/main/loader.lua"
 
 local g = (getgenv and getgenv()) or _G
