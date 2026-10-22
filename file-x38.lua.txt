@@ -71,8 +71,3 @@ if req then
     elseif http_request then http_request = hooked
     elseif request then request = hooked end
 end
-
-print("[Unnamed] Bypass activo -> sin key, sin HWID, sin Discord")
-
--- Cargamos el loader normal, ya no va a pedir nada
-loadstring(game:HttpGet("https://raw.githubusercontent.com/smi9/UnnamedCheats/refs/heads/main/loader.lua"))()
