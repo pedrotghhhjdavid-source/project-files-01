@@ -1,47 +1,21 @@
 -- ==========================================================
---  UNNAMED — BYPASS TOTAL (v6 — KEY CORREGIDA)
+--  UNNAMED / RIVALS — v7 (no toca el código de Luraph)
 -- ==========================================================
-local KEY  = "iyzOMzPfKIksNxQKtKJOguHKasPsLLjo"
-local HWID = "unnamed-cracked-device"
-local URL  = "https://raw.githubusercontent.com/smi9/UnnamedCheats/refs/heads/main/loader.lua"
+local KEY = "iyzOltc1qalrd99hju33uagsf8927k7xfxr423gr93gnjz8"
+local URL = "https://raw.githubusercontent.com/smi9/UnnamedCheats/refs/heads/main/loader.lua"
 
 local g = (getgenv and getgenv()) or _G
 
-print("[Unnamed] Juego -> PlaceId:", game.PlaceId, "| GameId:", game.GameId)
-
--- key/hwid en todos los entornos
-local function put(env, name, value)
-    if type(env) == "table" then pcall(function() env[name] = value end) end
-end
-for _, env in ipairs({ g, _G, shared, (getfenv and getfenv(0)) or nil }) do
-    put(env, "script_key", KEY)
-    put(env, "scriptKey",  KEY)
-    put(env, "key",        KEY)
-    put(env, "hwid",       HWID)
-    put(env, "HWID",       HWID)
-    put(env, "gethwid", function() return HWID end)
-    put(env, "getHWID", function() return HWID end)
-end
+-- key correcta
 g.script_key = KEY
 script_key = KEY
+g.UC_LOADED = false
 
--- fake + inyección de la key en el código de Luarmor
-local function looksJSON(s)
-    local f = s:sub(1, 1)
-    return f == "{" or f == "["
-end
-
-local function fake(res, url)
+-- fake SOLO de respuestas tipo estado/JSON (jamás del código Lua)
+local function fake(res)
     if type(res) ~= "string" or res == "" then return res end
 
-    if type(url) == "string"
-        and (url:find("luarmor", 1, true) or url:find("UnnamedCheats", 1, true))
-        and not looksJSON(res) then
-        res = 'script_key = ' .. string.format("%q", KEY)
-            .. '; getgenv().script_key = script_key; ' .. res
-    end
-
-    if res:find("{", 1, true) and looksJSON(res) then
+    if res:match("^%s*{") then
         res = res:gsub('"valid"%s*:%s*false',      '"valid":true')
         res = res:gsub('"success"%s*:%s*false',    '"success":true')
         res = res:gsub('"hwid"%s*:%s*false',       '"hwid":true')
@@ -51,20 +25,21 @@ local function fake(res, url)
         res = res:gsub('"banned"%s*:%s*true',      '"banned":false')
         return res
     end
-    local l = res:lower()
-    if l == "false" or l == "invalid" or l == "expired"
-        or l == "0" or l == "no" or l == "denied" then
+
+    local l = res:lower():match("^%s*(.-)%s*$")
+    if l == "false" or l == "invalid" or l == "expired" or l == "denied" then
         return "true"
     end
     return res
 end
 
+-- hook request
 local req = (syn and syn.request) or (http and http.request) or http_request or request
 if req then
     local function hooked(o)
         local ok, r = pcall(req, o)
         if not ok then return r end
-        if r and r.Body then r.Body = fake(r.Body, o and o.Url) end
+        if r and r.Body then r.Body = fake(r.Body) end
         return r
     end
     if syn and syn.request then syn.request = hooked end
@@ -73,6 +48,11 @@ if req then
     if request then request = hooked end
     g.request = hooked
 end
+
+-- hook HttpGet
+local origGlobal = g.HttpGet or HttpGet
+local okG, origGame = pcall(function() return game.HttpGet end)
+origGame = (okG and type(origGame) == "function") and origGame or nil
 
 local function makeHook(orig, needsSelf)
     return function(a, b)
@@ -83,13 +63,9 @@ local function makeHook(orig, needsSelf)
             if needsSelf then ok, res = pcall(orig, url) else ok, res = pcall(orig, game, url) end
         end
         if not ok then res = nil end
-        return fake(res, url)
+        return fake(res)
     end
 end
-
-local origGlobal = g.HttpGet or HttpGet
-local okG, origGame = pcall(function() return game.HttpGet end)
-origGame = (okG and type(origGame) == "function") and origGame or nil
 
 if type(origGlobal) == "function" then
     g.HttpGet = makeHook(origGlobal, false)
@@ -102,39 +78,24 @@ elseif type(origGlobal) == "function" then
     pcall(function() game.HttpGet = g.HttpGet end)
 end
 
-if type(loadstring) == "function" and type(setfenv) == "function" then
-    local oldLoadstring = loadstring
-    loadstring = function(chunk, ...)
-        local fn, err = oldLoadstring(chunk, ...)
-        if fn then pcall(setfenv, fn, g) end
-        return fn, err
-    end
-    g.loadstring = loadstring
+print("[Unnamed] key lista ->", tostring(script_key))
+
+-- descargar y ejecutar (con el getter ORIGINAL, sin fake, para dejar el Luraph intacto)
+local src
+if type(origGlobal) == "function" then
+    local ok, r = pcall(origGlobal, URL); if ok then src = r end
+end
+if not src and origGame then
+    local ok, r = pcall(origGame, game, URL); if ok then src = r end
+end
+if not src then
+    local ok, r = pcall(function() return game:HttpGet(URL) end); if ok then src = r end
 end
 
-g.UC_LOADED = false
-
-print("[Unnamed] Bypass activo -> key correcta")
-
-local function rawGet(url)
-    if type(origGlobal) == "function" then
-        local ok, r = pcall(origGlobal, url); if ok and r then return r end
-    end
-    if origGame then
-        local ok, r = pcall(origGame, game, url); if ok and r then return r end
-    end
-    local ok, r = pcall(function() return game:HttpGet(url) end); if ok then return r end
-    return nil
-end
-
-local src = rawGet(URL)
 if not src then warn("[Unnamed] No se pudo descargar el loader.") return end
-print("[Unnamed] Loader descargado:", #src, "bytes")
 
 local fn, err = loadstring(src)
 if not fn then warn("[Unnamed] Error de sintaxis:", err) return end
-if type(setfenv) == "function" then pcall(setfenv, fn, g) end
 
 print("[Unnamed] Ejecutando loader...")
-local ok, e = pcall(fn)
-print("[Unnamed] Loader salio:", ok, e)
+pcall(fn)
