@@ -1,78 +1,147 @@
 -- ==========================================================
---  UNNAMED — BYPASS TOTAL
---  Sin key | Sin HWID | Sin Discord | Entra directo
+--  UNNAMED — BYPASS TOTAL  (FIX: "HttpGet is not a valid member")
 -- ==========================================================
 local KEY  = "iyzOltc1qalrd99hju33uagsf8927k7xfxr423gr93gnjz8"
 local HWID = "unnamed-cracked-device"
 
 local g = (getgenv and getgenv()) or _G
+local wrap = newcclosure or function(f) return f end
 
--- Forzamos la key en todos los lugares donde el loader la busca
+-- 1) Forzamos key/HWID en todos los sitios donde el loader los busca
 g.script_key  = KEY
 g.UnnamedKey  = KEY
 g.unnamed_key = KEY
 g.hwid        = HWID
 g.HWID        = HWID
 g.hwid_crack  = HWID
+g.gethwid     = function() return HWID end
+g.getHWID     = function() return HWID end
 script_key    = KEY
 
--- Espoileamos los getters de HWID típicos
-pcall(function()
-    g.gethwid = function() return HWID end
-    g.getHWID = function() return HWID end
-end)
-
--- Convierte cualquier respuesta de "inválido" a "válido"
+-- 2) Convierte cualquier respuesta "inválido" -> "válido"
 local function fake(res)
     if type(res) ~= "string" or res == "" then return res end
-    if res:find("{") then
-        res = res:gsub('"valid"%s*:%s*false',   '"valid":true')
-        res = res:gsub('"success"%s*:%s*false', '"success":true')
-        res = res:gsub('"hwid"%s*:%s*false',    '"hwid":true')
-        res = res:gsub('"key"%s*:%s*false',     '"key":true')
+    if res:find("{", 1, true) then
+        res = res:gsub('"valid"%s*:%s*false',      '"valid":true')
+        res = res:gsub('"success"%s*:%s*false',    '"success":true')
+        res = res:gsub('"hwid"%s*:%s*false',       '"hwid":true')
+        res = res:gsub('"key"%s*:%s*false',        '"key":true')
         res = res:gsub('"authorized"%s*:%s*false', '"authorized":true')
-        res = res:gsub('"expired"%s*:%s*true',  '"expired":false')
-        res = res:gsub('"banned"%s*:%s*true',   '"banned":false')
+        res = res:gsub('"expired"%s*:%s*true',     '"expired":false')
+        res = res:gsub('"banned"%s*:%s*true',      '"banned":false')
         return res
     end
     local l = res:lower()
     if l == "false" or l == "invalid" or l == "expired"
-       or l == "0" or l == "no" or l == "denied" then
+        or l == "0" or l == "no" or l == "denied" then
         return "true"
     end
     return res
 end
 
-local wrap = newcclosure or function(f) return f end
+-- 3) Localizamos HttpGet SIN leer game.HttpGet de golpe (eso era lo que petaba)
+local rawFn = nil
+if type(g.HttpGet) == "function" then
+    rawFn = g.HttpGet
+elseif type(HttpGet) == "function" then
+    rawFn = HttpGet
+else
+    local ok, val = pcall(function() return game.HttpGet end)
+    if ok and type(val) == "function" then rawFn = val end
+end
+local rawIsGlobal = (rawFn ~= nil) and (rawFn == g.HttpGet or rawFn == HttpGet)
 
--- Hook GET
-local realGet = game.HttpGet
-game.HttpGet = wrap(function(self, url, ...)
-    return fake(realGet(self, url, ...))
-end)
-
-if game.HttpGetAsync then
-    local realAsync = game.HttpGetAsync
-    game.HttpGetAsync = wrap(function(self, url, ...)
-        return fake(realAsync(self, url, ...))
-    end)
+local function callRaw(url)
+    if not rawFn then return nil end
+    local order = rawIsGlobal and { {url}, {game, url} } or { {game, url}, {url} }
+    for _, args in ipairs(order) do
+        local ok, r = pcall(rawFn, table.unpack(args))
+        if ok and type(r) == "string" then return r end
+    end
+    return nil
 end
 
--- Hook POST / request
+-- 4) Hook del GET (envuelve todo lo posible + fallback a request)
 local req = (syn and syn.request) or (http and http.request) or http_request or request
+
+local function hookedGet(a, b)
+    local url = (type(a) == "string") and a or b
+    local res = callRaw(url)
+    if res == nil and req then
+        local ok, r = pcall(req, { Url = url, Method = "GET" })
+        if ok and r then res = r.Body end
+    end
+    if res == nil then
+        local ok, r = pcall(function() return game:HttpGet(url) end)
+        if ok then res = r end
+    end
+    return fake(res)
+end
+local hookedGetC = wrap(hookedGet)
+
+g.HttpGet = hookedGetC
+pcall(function() game.HttpGet = hookedGetC end)
+
+-- Por si el executor ignora la asignación, lo forzamos en el metatable
+pcall(function()
+    local mt = getrawmetatable(game)
+    if mt and type(mt.__index) == "function" then
+        local old = mt.__index
+        if setreadonly then setreadonly(mt, false) end
+        mt.__index = wrap(function(self, key)
+            if self == game and key == "HttpGet" then return hookedGetC end
+            return old(self, key)
+        end)
+        if setreadonly then setreadonly(mt, true) end
+    end
+end)
+
+-- HttpGetAsync (solo si existe)
+local rawAsync = nil
+do
+    local ok, val = pcall(function() return game.HttpGetAsync end)
+    if ok and type(val) == "function" then rawAsync = val end
+end
+if rawAsync then
+    local hookedAsync = wrap(function(self, url, ...)
+        return fake(rawAsync(self, url, ...))
+    end)
+    pcall(function() game.HttpGetAsync = hookedAsync end)
+    g.HttpGetAsync = hookedAsync
+end
+
+-- 5) Hook de request / http_request (el loader suele usar esto para validar)
 if req then
     local function hooked(o)
         local r = req(o)
         if r and r.Body then r.Body = fake(r.Body) end
         return r
     end
-    if syn then syn.request = hooked
+    if syn and syn.request then syn.request = hooked
     elseif http and http.request then http.request = hooked
     elseif http_request then http_request = hooked
     elseif request then request = hooked end
+    g.request = hooked
 end
 
 print("[Unnamed] Bypass activo -> sin key, sin HWID, sin Discord")
 
--- Cargamos el loader normal, ya no va a pedir nada
-loadstring(game:HttpGet("https://raw.githubusercontent.com/smi9/UnnamedCheats/refs/heads/main/loader.lua"))()
+-- 6) Cargamos el loader con el GET ya parcheado
+local URL = "https://raw.githubusercontent.com/smi9/UnnamedCheats/refs/heads/main/loader.lua"
+local src = callRaw(URL)
+if not src then
+    local ok, r = pcall(function() return game:HttpGet(URL) end)
+    if ok then src = r end
+end
+
+if src then
+    local fn, err = loadstring(src)
+    if fn then
+        local ok, e = pcall(fn)
+        if not ok then warn("[Unnamed] Error al ejecutar el loader:", e) end
+    else
+        warn("[Unnamed] Error de sintaxis del loader:", err)
+    end
+else
+    warn("[Unnamed] No se pudo descargar el loader.")
+end
