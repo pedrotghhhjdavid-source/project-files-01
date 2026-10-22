@@ -1,33 +1,31 @@
 -- ==========================================================
---  UNNAMED — BYPASS TOTAL (v5 — inyecta la key en el loader)
+--  UNNAMED — BYPASS TOTAL (v6 — KEY CORREGIDA)
 -- ==========================================================
-local KEY  = "iyzOltc1qalrd99hju33uagsf8927k7xfxr423gr93gnjz8"
+local KEY  = "iyzOMzPfKIksNxQKtKJOguHKasPsLLjo"
 local HWID = "unnamed-cracked-device"
 local URL  = "https://raw.githubusercontent.com/smi9/UnnamedCheats/refs/heads/main/loader.lua"
-
-local FAKE = true   -- ponlo en false si quieres probar sin falsear respuestas
 
 local g = (getgenv and getgenv()) or _G
 
 print("[Unnamed] Juego -> PlaceId:", game.PlaceId, "| GameId:", game.GameId)
 
--- 1) key/hwid por todos lados
+-- key/hwid en todos los entornos
 local function put(env, name, value)
     if type(env) == "table" then pcall(function() env[name] = value end) end
 end
 for _, env in ipairs({ g, _G, shared, (getfenv and getfenv(0)) or nil }) do
-    put(env, "script_key",  KEY)
-    put(env, "scriptKey",   KEY)
-    put(env, "key",         KEY)
-    put(env, "hwid",        HWID)
-    put(env, "HWID",        HWID)
+    put(env, "script_key", KEY)
+    put(env, "scriptKey",  KEY)
+    put(env, "key",        KEY)
+    put(env, "hwid",       HWID)
+    put(env, "HWID",       HWID)
     put(env, "gethwid", function() return HWID end)
     put(env, "getHWID", function() return HWID end)
 end
 g.script_key = KEY
 script_key = KEY
 
--- 2) fake + INYECCION de la key en el codigo descargado
+-- fake + inyección de la key en el código de Luarmor
 local function looksJSON(s)
     local f = s:sub(1, 1)
     return f == "{" or f == "["
@@ -36,18 +34,13 @@ end
 local function fake(res, url)
     if type(res) ~= "string" or res == "" then return res end
 
-    -- inyecta la key dentro del propio archivo de Luarmor / del repo
     if type(url) == "string"
         and (url:find("luarmor", 1, true) or url:find("UnnamedCheats", 1, true))
         and not looksJSON(res) then
         res = 'script_key = ' .. string.format("%q", KEY)
             .. '; getgenv().script_key = script_key; ' .. res
-        print("[Unnamed] key inyectada en:", url)
     end
 
-    if not FAKE then return res end
-
-    -- respuestas de estado / JSON
     if res:find("{", 1, true) and looksJSON(res) then
         res = res:gsub('"valid"%s*:%s*false',      '"valid":true')
         res = res:gsub('"success"%s*:%s*false',    '"success":true')
@@ -66,7 +59,6 @@ local function fake(res, url)
     return res
 end
 
--- 3) hook request
 local req = (syn and syn.request) or (http and http.request) or http_request or request
 if req then
     local function hooked(o)
@@ -82,7 +74,6 @@ if req then
     g.request = hooked
 end
 
--- 4) hook HttpGet
 local function makeHook(orig, needsSelf)
     return function(a, b)
         local url = (type(a) == "string") and a or b
@@ -111,7 +102,6 @@ elseif type(origGlobal) == "function" then
     pcall(function() game.HttpGet = g.HttpGet end)
 end
 
--- 5) que todo chunk cargado herede getgenv
 if type(loadstring) == "function" and type(setfenv) == "function" then
     local oldLoadstring = loadstring
     loadstring = function(chunk, ...)
@@ -122,12 +112,10 @@ if type(loadstring) == "function" and type(setfenv) == "function" then
     g.loadstring = loadstring
 end
 
--- 6) permitir re-ejecutar
 g.UC_LOADED = false
 
-print("[Unnamed] Bypass activo -> sin key, sin HWID, sin Discord")
+print("[Unnamed] Bypass activo -> key correcta")
 
--- 7) cargar
 local function rawGet(url)
     if type(origGlobal) == "function" then
         local ok, r = pcall(origGlobal, url); if ok and r then return r end
