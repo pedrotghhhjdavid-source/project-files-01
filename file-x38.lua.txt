@@ -2,7 +2,7 @@
 --  UNNAMED — BYPASS TOTAL
 --  Sin key | Sin HWID | Sin Discord | Entra directo
 -- ==========================================================
-local KEY  = "iyzOMzPfKIksNxQKtKJOguHKasPsLLjo"
+local KEY  = "iyzOltc1qalrd99hju33uagsf8927k7xfxr423gr93gnjz8"
 local HWID = "unnamed-cracked-device"
 
 local g = (getgenv and getgenv()) or _G
@@ -71,3 +71,8 @@ if req then
     elseif http_request then http_request = hooked
     elseif request then request = hooked end
 end
+
+print("[Unnamed] Bypass activo -> sin key, sin HWID, sin Discord")
+
+-- Cargamos el loader normal, ya no va a pedir nada
+loadstring(game:HttpGet("https://raw.githubusercontent.com/smi9/UnnamedCheats/refs/heads/main/loader.lua"))()
