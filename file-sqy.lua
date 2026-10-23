@@ -710,10 +710,3 @@ track(WS.DescendantAdded:Connect(function(obj)
         task.defer(function() if obj.Parent then pcall(paintPart, obj) end end)
     end
 end))
-
---=================================================================
---  ARRANQUE
---=================================================================
-loadIDS()
-rebuild()
-notify("v7 cargado", "Imagen + modo brillo + ESTAMPAR. " .. #IDS .. " IDs en lista.", 5)
