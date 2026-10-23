@@ -1,20 +1,27 @@
 --[[=================================================================
-    VENICE x RIVALS - SELLOS DE ALAS v7 (FINAL)
+    VENICE x RIVALS - SELLOS DE ALAS v7.1 (FIX)
     ------------------------------------------------------------------
     * Paredes + TERRENO en blanco con estampas
-    * Boton de BRILLO con intensidad (para que el blanco se vea blanco)
+    * Boton de BRILLO con intensidad
     * Galeria + importador de IDs (se guarda en disco)
     * Preview, restore y unload completo
+    FIXES:
+     - materiales de terreno resueltos por nombre (no rompe si el
+       Enum.Material no existe en tu cliente)
+     - todo dentro de pcall + error visible en pantalla
+     - refresh() ya no pone opacas las partes transparentes
+     - parent CoreGui/gethui con fallback a PlayerGui
+     - orden de la UI corregido
 ===================================================================]]
 
-local Players      = game:GetService("Players")
-local UIS          = game:GetService("UserInputService")
-local SoundService = game:GetService("SoundService")
-local TweenService = game:GetService("TweenService")
-local Lighting     = game:GetService("Lighting")
+local Players         = game:GetService("Players")
+local UIS             = game:GetService("UserInputService")
+local SoundService    = game:GetService("SoundService")
+local TweenService    = game:GetService("TweenService")
+local Lighting        = game:GetService("Lighting")
 local MaterialService = game:GetService("MaterialService")
-local LP           = Players.LocalPlayer
-local WS           = workspace
+local LP              = Players.LocalPlayer
+local WS              = workspace
 
 if getgenv and getgenv().VeniceWings7 then
     pcall(function() getgenv().VeniceWings7:Destroy() end)
@@ -24,14 +31,57 @@ local isUnloaded = false
 local Conn = {}
 local function track(c) table.insert(Conn, c) return c end
 
-local TargetParent = game:GetService("CoreGui")
-if gethui then pcall(function() TargetParent = gethui() end) end
+local ScreenGui
 
-local ScreenGui = Instance.new("ScreenGui")
+--========================== ERROR VISIBLE ==========================
+local function bootError(e)
+    warn("[Venice Wings v7] ERROR: " .. tostring(e))
+    local gui = ScreenGui
+    if not gui then
+        gui = Instance.new("ScreenGui")
+        gui.Name = "VeniceWings7_Error"
+        gui.ResetOnSpawn = false
+        local parent = game:GetService("CoreGui")
+        if gethui then
+            local o, h = pcall(gethui)
+            if o and h then parent = h end
+        end
+        local okp = pcall(function() gui.Parent = parent end)
+        if not okp or not gui.Parent then
+            pcall(function() gui.Parent = LP:WaitForChild("PlayerGui") end)
+        end
+    end
+    local lbl = Instance.new("TextLabel")
+    lbl.Size = UDim2.new(0, 430, 0, 70)
+    lbl.Position = UDim2.new(0, 12, 0, 10)
+    lbl.BackgroundColor3 = Color3.fromRGB(28, 16, 16)
+    lbl.BorderColor3 = Color3.fromRGB(130, 45, 45)
+    lbl.TextColor3 = Color3.fromRGB(255, 165, 165)
+    lbl.Font = Enum.Font.Code
+    lbl.TextSize = 11
+    lbl.TextWrapped = true
+    lbl.TextXAlignment = Enum.TextXAlignment.Left
+    lbl.Text = "Venice Wings v7 - ERROR:\n" .. tostring(e)
+    lbl.ZIndex = 500
+    lbl.Parent = gui
+end
+
+--============================= CUERPO ==============================
+local ok, err = pcall(function()
+
+local TargetParent = game:GetService("CoreGui")
+if gethui then
+    local o, h = pcall(gethui)
+    if o and h then TargetParent = h end
+end
+
+ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "VeniceWings7"
 ScreenGui.ResetOnSpawn = false
 pcall(function() ScreenGui.Parent = TargetParent end)
-if not ScreenGui.Parent then ScreenGui.Parent = LP:WaitForChild("PlayerGui") end
+if not ScreenGui.Parent then
+    ScreenGui.Parent = LP:WaitForChild("PlayerGui")
+end
 if getgenv then getgenv().VeniceWings7 = ScreenGui end
 
 --=================================================================
@@ -47,11 +97,13 @@ local DEFAULT_IDS = {
 local IDS = {}
 
 local function loadIDS()
-    local ok, txt = pcall(function()
-        if readfile and isfile and isfile(SAVE_FILE) then return readfile(SAVE_FILE) end
-    end)
     IDS = {}
-    if ok and txt then
+    local okr, txt = pcall(function()
+        if readfile and isfile and isfile(SAVE_FILE) then
+            return readfile(SAVE_FILE)
+        end
+    end)
+    if okr and txt then
         for id in tostring(txt):gmatch("%d+") do table.insert(IDS, id) end
     end
     if #IDS == 0 then
@@ -60,7 +112,9 @@ local function loadIDS()
 end
 
 local function saveIDS()
-    pcall(function() if writefile then writefile(SAVE_FILE, table.concat(IDS, "\n")) end end)
+    pcall(function()
+        if writefile then writefile(SAVE_FILE, table.concat(IDS, "\n")) end
+    end)
 end
 
 local WALL_COLORS = {
@@ -101,14 +155,24 @@ local BACKUP  = {}
 local paintedCount = 0
 local Terrain = WS:FindFirstChildOfClass("Terrain")
 
-local TERRAIN_MATS = {
-    Enum.Material.Grass, Enum.Material.Sand, Enum.Material.Rock,
-    Enum.Material.Snow, Enum.Material.Ground, Enum.Material.Mud,
-    Enum.Material.LeafyGrass, Enum.Material.Salt, Enum.Material.Sandstone,
-    Enum.Material.Basalt, Enum.Material.Asphalt, Enum.Material.CrackedLava,
-    Enum.Material.Limestone, Enum.Material.Pavement, Enum.Material.Dirt,
-    Enum.Material.Ice, Enum.Material.Glacier, Enum.Material.Mud,
+-- materiales de terreno a prueba de errores -----------------------
+local TERRAIN_MAT_NAMES = {
+    "Grass", "Sand", "Rock", "Snow", "Ground", "Mud", "LeafyGrass",
+    "Salt", "Sandstone", "Basalt", "Asphalt", "CrackedLava",
+    "Limestone", "Pavement", "Dirt", "Ice", "Glacier",
 }
+local TERRAIN_MATS = {}
+do
+    local seen = {}
+    for _, n in ipairs(TERRAIN_MAT_NAMES) do
+        local okm, m = pcall(function() return Enum.Material[n] end)
+        if okm and m and not seen[m] then
+            seen[m] = true
+            table.insert(TERRAIN_MATS, m)
+        end
+    end
+end
+
 local TERRAIN_COLOR_BACKUP = nil
 local TERRAIN_VARIANTS = {}
 
@@ -116,7 +180,7 @@ local TERRAIN_VARIANTS = {}
 --  NOTIFICACIONES
 --=================================================================
 local function notify(title, body, dur)
-    if isUnloaded then return end
+    if isUnloaded or not ScreenGui or not ScreenGui.Parent then return end
     dur = dur or 4
     local f = Instance.new("Frame")
     f.Size = UDim2.new(0, 270, 0, 52)
@@ -231,12 +295,13 @@ end
 
 local function paintTerrain()
     if not Terrain or not CFG.terrain or not CFG.asset then return end
+    if #TERRAIN_MATS == 0 then return end
 
     if not TERRAIN_COLOR_BACKUP then
         TERRAIN_COLOR_BACKUP = {}
         for _, m in ipairs(TERRAIN_MATS) do
-            local ok, c = pcall(function() return Terrain:GetMaterialColor(m) end)
-            if ok and c then TERRAIN_COLOR_BACKUP[m] = c end
+            local okc, c = pcall(function() return Terrain:GetMaterialColor(m) end)
+            if okc and c then TERRAIN_COLOR_BACKUP[m] = c end
         end
     end
 
@@ -322,7 +387,11 @@ local function setupTexture(t)
             t.Rotation = math.random(0, 3) * 90
         end)
     else
-        pcall(function() t.OffsetStudsU = 0 t.OffsetStudsV = 0 t.Rotation = 0 end)
+        pcall(function()
+            t.OffsetStudsU = 0
+            t.OffsetStudsV = 0
+            t.Rotation = 0
+        end)
     end
 end
 
@@ -340,10 +409,14 @@ local function paintPart(part)
         pcall(function() part.Color = CFG.wallColor end)
     end
 
-    for _, face in ipairs(CFG.allFaces and FACES_ALL or FACES_VIS) do
+    local faces = CFG.allFaces and FACES_ALL or FACES_VIS
+    for _, face in ipairs(faces) do
         local found
         for _, c in ipairs(part:GetChildren()) do
-            if c:IsA("Texture") and c.Face == face then found = c break end
+            if c:IsA("Texture") and c.Face == face then
+                found = c
+                break
+            end
         end
         if found then
             if not BACKUP[found] then
@@ -366,7 +439,10 @@ local function paintPart(part)
 end
 
 local function paintAll()
-    if not CFG.asset then return end
+    if not CFG.asset then
+        notify("Falta imagen", "Toca una imagen de la lista primero.", 4)
+        return
+    end
     paintedCount = 0
     local list = WS:GetDescendants()
     task.spawn(function()
@@ -395,8 +471,12 @@ local function restore()
 end
 
 local function refresh()
-    for inst in pairs(CREATED) do pcall(setupTexture, inst) end
-    for inst in pairs(BACKUP) do pcall(setupTexture, inst) end
+    for inst in pairs(CREATED) do
+        if inst and inst.Parent and inst:IsA("Texture") then pcall(setupTexture, inst) end
+    end
+    for inst in pairs(BACKUP) do
+        if inst and inst.Parent and inst:IsA("Texture") then pcall(setupTexture, inst) end
+    end
     pcall(updateTerrainSettings)
 end
 
@@ -445,7 +525,7 @@ local Main = new("Frame", {
 new("TextLabel", {
     Size = UDim2.new(1, -12, 0, 22), Position = UDim2.new(0, 8, 0, 3),
     BackgroundTransparency = 1, Font = Enum.Font.Code, TextSize = 12,
-    Text = "venice x rivals | v7 final", TextColor3 = TEXT,
+    Text = "venice x rivals | v7.1 fix", TextColor3 = TEXT,
     TextXAlignment = Enum.TextXAlignment.Left,
 }, Main)
 
@@ -457,10 +537,18 @@ local ToggleBtn = new("TextButton", {
 ToggleBtn.Active = true
 ToggleBtn.Draggable = true
 
-local function syncBtn() ToggleBtn.Text = Main.Visible and "cerrar ui [X]" or "abrir ui [X]" end
-track(ToggleBtn.MouseButton1Click:Connect(function() Main.Visible = not Main.Visible syncBtn() end))
+local function syncBtn()
+    ToggleBtn.Text = Main.Visible and "cerrar ui [X]" or "abrir ui [X]"
+end
+track(ToggleBtn.MouseButton1Click:Connect(function()
+    Main.Visible = not Main.Visible
+    syncBtn()
+end))
 track(UIS.InputBegan:Connect(function(i, gpe)
-    if not gpe and i.KeyCode == Enum.KeyCode.RightShift then Main.Visible = not Main.Visible syncBtn() end
+    if not gpe and i.KeyCode == Enum.KeyCode.RightShift then
+        Main.Visible = not Main.Visible
+        syncBtn()
+    end
 end))
 
 local Scroll = new("ScrollingFrame", {
@@ -486,8 +574,8 @@ local function button(txt, order, color, cb, parent, size)
         Text = txt, TextColor3 = TEXT, LayoutOrder = order, TextWrapped = true,
     }, parent or Scroll)
     b.MouseButton1Click:Connect(function()
-        local ok, err = pcall(cb)
-        if not ok then notify("Error", tostring(err), 6) end
+        local okc, errc = pcall(cb)
+        if not okc then notify("Error", tostring(errc), 6) end
     end)
     return b
 end
@@ -535,7 +623,8 @@ local function sliderRow(label, min, max, default, order, cb)
     local function fromX(x) set((x - bar.AbsolutePosition.X) / math.max(bar.AbsoluteSize.X, 1)) end
     bar.InputBegan:Connect(function(i)
         if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
-            drag = true fromX(i.Position.X)
+            drag = true
+            fromX(i.Position.X)
         end
     end)
     track(UIS.InputChanged:Connect(function(i)
@@ -544,7 +633,9 @@ local function sliderRow(label, min, max, default, order, cb)
         end
     end))
     track(UIS.InputEnded:Connect(function(i)
-        if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then drag = false end
+        if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+            drag = false
+        end
     end))
 end
 
@@ -554,11 +645,11 @@ section("1. IMAGENES (toca una)", 1)
 local Preview = new("ImageLabel", {
     Size = UDim2.new(0, 86, 0, 86), Position = UDim2.new(1, -92, 0, 0),
     BackgroundColor3 = Color3.fromRGB(75, 75, 85), BorderColor3 = Color3.fromRGB(95, 95, 105),
-    LayoutOrder = 1, Image = "",
+    LayoutOrder = 2, Image = "",
 }, Scroll)
 
 local Grid = new("Frame", {
-    Size = UDim2.new(1, -100, 0, 132), BackgroundTransparency = 1, LayoutOrder = 2,
+    Size = UDim2.new(1, -100, 0, 132), BackgroundTransparency = 1, LayoutOrder = 3,
 }, Scroll)
 new("UIGridLayout", {
     CellSize = UDim2.new(0.5, -3, 0, 30), CellPadding = UDim2.new(0, 6, 0, 6),
@@ -568,6 +659,7 @@ new("UIGridLayout", {
 local function pick(id)
     CFG.asset = "rbxassetid://" .. id
     Preview.Image = CFG.asset
+    if next(CREATED) then pcall(refresh) end
     if TERRAIN_COLOR_BACKUP then pcall(paintTerrain) end
     notify("Elegido", "ID " .. id, 3)
 end
@@ -591,10 +683,10 @@ local ImportBox = new("TextBox", {
     BorderColor3 = Color3.fromRGB(60, 60, 66), Font = Enum.Font.Code, TextSize = 10,
     Text = "", PlaceholderText = "pega IDs separadas por coma o salto de linea",
     PlaceholderColor3 = MUTED, TextColor3 = TEXT, ClearTextOnFocus = false,
-    TextWrapped = true, LayoutOrder = 3,
+    TextWrapped = true, LayoutOrder = 4,
 }, Scroll)
 
-button("IMPORTAR LISTA", 4, Color3.fromRGB(45, 36, 70), function()
+button("IMPORTAR LISTA", 5, Color3.fromRGB(45, 36, 70), function()
     local found = {}
     for id in tostring(ImportBox.Text):gmatch("%d+") do table.insert(found, id) end
     if #found == 0 then notify("Importar", "No encontre ninguna ID.", 4) return end
@@ -604,21 +696,21 @@ button("IMPORTAR LISTA", 4, Color3.fromRGB(45, 36, 70), function()
     notify("Importado", #found .. " IDs guardadas.", 4)
 end)
 
-button("VOLVER A LA LISTA POR DEFECTO", 5, Color3.fromRGB(30, 30, 36), function()
+button("VOLVER A LA LISTA POR DEFECTO", 6, Color3.fromRGB(30, 30, 36), function()
     IDS = {}
     for _, id in ipairs(DEFAULT_IDS) do table.insert(IDS, id) end
     saveIDS()
     rebuild()
 end)
 
-section("2. COLORES", 6)
+section("2. COLORES", 7)
 
 new("TextLabel", {
     Size = UDim2.new(1, 0, 0, 14), BackgroundTransparency = 1, Font = Enum.Font.Code,
     TextSize = 10, Text = "paredes y suelo", TextColor3 = MUTED,
-    TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = 7,
+    TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = 8,
 }, Scroll)
-local wallRow = new("Frame", { Size = UDim2.new(1, 0, 0, 28), BackgroundTransparency = 1, LayoutOrder = 8 }, Scroll)
+local wallRow = new("Frame", { Size = UDim2.new(1, 0, 0, 28), BackgroundTransparency = 1, LayoutOrder = 9 }, Scroll)
 new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 4) }, wallRow)
 for _, w in ipairs(WALL_COLORS) do
     button(w.name, 1, w.color or Color3.fromRGB(60, 60, 70), function()
@@ -631,9 +723,9 @@ end
 new("TextLabel", {
     Size = UDim2.new(1, 0, 0, 14), BackgroundTransparency = 1, Font = Enum.Font.Code,
     TextSize = 10, Text = "imagen", TextColor3 = MUTED,
-    TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = 9,
+    TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = 10,
 }, Scroll)
-local texRow = new("Frame", { Size = UDim2.new(1, 0, 0, 28), BackgroundTransparency = 1, LayoutOrder = 10 }, Scroll)
+local texRow = new("Frame", { Size = UDim2.new(1, 0, 0, 28), BackgroundTransparency = 1, LayoutOrder = 11 }, Scroll)
 new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 4) }, texRow)
 for _, tc in ipairs(TEX_COLORS) do
     button(tc.name, 1, tc.color, function()
@@ -643,55 +735,55 @@ for _, tc in ipairs(TEX_COLORS) do
     end, texRow, UDim2.new(0, 72, 0, 28))
 end
 
-section("3. BRILLO", 11)
-toggleRow("modo brillo (mapa claro)", 12, false, function(v)
+section("3. BRILLO", 12)
+toggleRow("modo brillo (mapa claro)", 13, false, function(v)
     CFG.bright = v
     if v then applyBright() else restoreBright() end
 end)
-sliderRow("intensidad del brillo", 1, 5, 3, 13, function(v)
+sliderRow("intensidad del brillo", 1, 5, 3, 14, function(v)
     CFG.brightLvl = v
     applyBright()
 end)
 
-section("4. ESTAMPAR", 14)
-button("ESTAMPAR PAREDES + SUELO", 15, Color3.fromRGB(55, 42, 92), function() paintAll() end)
-button("RESTAURAR MAPA", 16, Color3.fromRGB(30, 30, 36), function() restore() end)
+section("4. ESTAMPAR", 15)
+button("ESTAMPAR PAREDES + SUELO", 16, Color3.fromRGB(55, 42, 92), function() paintAll() end)
+button("RESTAURAR MAPA", 17, Color3.fromRGB(30, 30, 36), function() restore() end)
 
-section("5. AJUSTES", 17)
-sliderRow("Tamano de cada sello (studs)", 1, 30, 5, 18, function(v)
+section("5. AJUSTES", 18)
+sliderRow("Tamano de cada sello (studs)", 1, 30, 5, 19, function(v)
     CFG.tiling = v
     refresh()
 end)
-toggleRow("posicion aleatoria", 19, true, function(v)
+toggleRow("posicion aleatoria", 20, true, function(v)
     CFG.randomOff = v
     refresh()
 end)
-toggleRow("incluir terreno / suelo", 20, true, function(v) CFG.terrain = v end)
-toggleRow("todas las caras (6)", 21, true, function(v) CFG.allFaces = v end)
-toggleRow("excluir jugadores / armas", 22, true, function(v) CFG.skipChars = v end)
-toggleRow("auto-aplicar a partes nuevas", 23, true, function(v) CFG.autoNew = v end)
-sliderRow("Tamano minimo de parte", 0, 20, 1, 24, function(v) CFG.minSize = v end)
+toggleRow("incluir terreno / suelo", 21, true, function(v) CFG.terrain = v end)
+toggleRow("todas las caras (6)", 22, true, function(v) CFG.allFaces = v end)
+toggleRow("excluir jugadores / armas", 23, true, function(v) CFG.skipChars = v end)
+toggleRow("auto-aplicar a partes nuevas", 24, true, function(v) CFG.autoNew = v end)
+sliderRow("Tamano minimo de parte", 0, 20, 1, 25, function(v) CFG.minSize = v end)
 
-section("SONIDO", 25)
+section("SONIDO", 26)
 local SndBox = new("TextBox", {
     Size = UDim2.new(1, 0, 0, 28), BackgroundColor3 = Color3.fromRGB(22, 22, 26),
     BorderColor3 = Color3.fromRGB(60, 60, 66), Font = Enum.Font.Code, TextSize = 11,
     Text = "", PlaceholderText = "ID de sonido", PlaceholderColor3 = MUTED,
-    TextColor3 = TEXT, ClearTextOnFocus = false, LayoutOrder = 26,
+    TextColor3 = TEXT, ClearTextOnFocus = false, LayoutOrder = 27,
 }, Scroll)
-button("Reproducir", 27, Color3.fromRGB(40, 32, 62), function() playSound(SndBox.Text) end)
-button("Detener", 28, Color3.fromRGB(30, 30, 36), function() stopSound() end)
-toggleRow("loop", 29, false, function(v) CFG.loop = v if CFG.sound then CFG.sound.Looped = v end end)
-sliderRow("Volumen", 0, 3, 1, 30, function(v) CFG.volume = v if CFG.sound then CFG.sound.Volume = v end end)
+button("Reproducir", 28, Color3.fromRGB(40, 32, 62), function() playSound(SndBox.Text) end)
+button("Detener", 29, Color3.fromRGB(30, 30, 36), function() stopSound() end)
+toggleRow("loop", 30, false, function(v) CFG.loop = v if CFG.sound then CFG.sound.Looped = v end end)
+sliderRow("Volumen", 0, 3, 1, 31, function(v) CFG.volume = v if CFG.sound then CFG.sound.Volume = v end end)
 
 new("TextLabel", {
     Size = UDim2.new(1, 0, 0, 44), BackgroundTransparency = 1, Font = Enum.Font.Code,
-    TextSize = 10, TextWrapped = true, LayoutOrder = 31, TextColor3 = Color3.fromRGB(235, 180, 90),
+    TextSize = 10, TextWrapped = true, LayoutOrder = 32, TextColor3 = Color3.fromRGB(235, 180, 90),
     TextXAlignment = Enum.TextXAlignment.Left,
     Text = "Orden: toca imagen -> modo brillo ON -> ESTAMPAR.\nSi el suelo no cambia, apaga y prende 'incluir terreno'.",
 }, Scroll)
 
-button("UNLOAD SCRIPT", 32, Color3.fromRGB(60, 25, 25), function()
+button("UNLOAD SCRIPT", 33, Color3.fromRGB(60, 25, 25), function()
     if isUnloaded then return end
     isUnloaded = true
     for _, c in ipairs(Conn) do pcall(function() c:Disconnect() end) end
@@ -710,3 +802,16 @@ track(WS.DescendantAdded:Connect(function(obj)
         task.defer(function() if obj.Parent then pcall(paintPart, obj) end end)
     end
 end))
+
+--=================================================================
+--  ARRANQUE
+--=================================================================
+loadIDS()
+rebuild()
+notify("v7.1 cargado", "Imagen + modo brillo + ESTAMPAR. " .. #IDS .. " IDs en lista.", 5)
+
+end) -- fin pcall
+
+if not ok then
+    bootError(err)
+end
