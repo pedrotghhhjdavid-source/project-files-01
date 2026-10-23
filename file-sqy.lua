@@ -1,22 +1,21 @@
 --[[=================================================================
-    VENICE x RIVALS - TEXTURE INJECTOR v2
+    VENICE x RIVALS - TEXTURE INJECTOR v3
     ------------------------------------------------------------------
-    * Pone TU imagen en todas las paredes / suelo del mapa de Rivals
-    * Vista previa para comprobar que la imagen cargo bien
-    * Boton DIAGNOSTICO para saber que hay en el mapa
-    * Reproductor de sonidos + restore + unload
+    * Usa IDs de Roblox (no URLs) -> carga al instante, sin descargar
+    * Botones con 4 decals de cruz con alas ya listos
+    * Vista previa + aplicar a todo el mapa + restore + sonido
     * Abrir / cerrar: RightShift o el boton "ui"
 ===================================================================]]
 
-local Players         = game:GetService("Players")
-local UIS             = game:GetService("UserInputService")
-local SoundService    = game:GetService("SoundService")
-local TweenService    = game:GetService("TweenService")
-local LP              = Players.LocalPlayer
-local WS              = workspace
+local Players      = game:GetService("Players")
+local UIS          = game:GetService("UserInputService")
+local SoundService = game:GetService("SoundService")
+local TweenService = game:GetService("TweenService")
+local LP           = Players.LocalPlayer
+local WS           = workspace
 
-if getgenv and getgenv().VeniceRivalsTex2 then
-    pcall(function() getgenv().VeniceRivalsTex2:Destroy() end)
+if getgenv and getgenv().VeniceRivalsTex3 then
+    pcall(function() getgenv().VeniceRivalsTex3:Destroy() end)
 end
 
 local isUnloaded = false
@@ -27,27 +26,29 @@ local TargetParent = game:GetService("CoreGui")
 if gethui then pcall(function() TargetParent = gethui() end) end
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "VeniceRivalsTex2"
+ScreenGui.Name = "VeniceRivalsTex3"
 ScreenGui.ResetOnSpawn = false
 pcall(function() ScreenGui.Parent = TargetParent end)
 if not ScreenGui.Parent then ScreenGui.Parent = LP:WaitForChild("PlayerGui") end
-if getgenv then getgenv().VeniceRivalsTex2 = ScreenGui end
+if getgenv then getgenv().VeniceRivalsTex3 = ScreenGui end
 
 --=================================================================
 --  CONFIG
 --=================================================================
-local DEFAULT_IMG = "https://cdn.supercoloring.com/coloring/497496/cross-with-wings-coloring-page-md.png"
-local MIRRORS = {
-    DEFAULT_IMG,
-    "https://cdn.supercoloring.com/coloring/497496/cross-with-wings-coloring-page-sm.webp",
+local PRESETS = {
+    { name = "cruz + alas",   id = "17814474604" },
+    { name = "sketch blanco", id = "100381501972125" },
+    { name = "gotica",        id = "102541166446822" },
+    { name = "wings & cross", id = "14983316111" },
 }
 
 local CFG = {
-    asset     = nil,
+    asset     = "rbxassetid://17814474604",
     tiling    = 8,
     allFaces  = true,
     minSize   = 1,
     skipChars = true,
+    darken    = false,
     autoNew   = true,
     volume    = 1,
     pitch     = 1,
@@ -55,8 +56,8 @@ local CFG = {
     sound     = nil,
 }
 
-local CREATED = {}   -- [Texture] = true
-local BACKUP  = {}   -- [inst] = { prop = valor original }
+local CREATED = {}
+local BACKUP  = {}
 local paintedCount = 0
 
 --=================================================================
@@ -117,63 +118,43 @@ local function notify(title, body, dur)
 end
 
 --=================================================================
---  DESCARGA DE LA IMAGEN
+--  RESOLVER ID
 --=================================================================
-local function fetchImage(url)
+local function resolve(input)
+    local raw = tostring(input or ""):gsub("%s", "")
+    if raw == "" then return nil end
+
+    local num = raw:match("^%d+$")
+        or raw:match("rbxassetid://(%d+)")
+        or raw:match("rbxthumb://.-(%d+)")
+        or raw:match("roblox%.com/library/(%d+)")
+        or raw:match("roblox%.com/catalog/(%d+)")
+        or raw:match("roblox%.com/(%d+)")
+    if num then return "rbxassetid://" .. num end
+
+    -- es una URL externa: necesita writefile + getcustomasset
+    if not (writefile and isfile and getcustomasset) then
+        return nil, "tu executor no tiene getcustomasset, usa una ID"
+    end
     local body
-    local ok = pcall(function() body = game:HttpGet(url) end)
+    local ok = pcall(function() body = game:HttpGet(raw) end)
     if not (ok and body and #body > 200) then
         if request then
-            local o, r = pcall(function() return request({ Url = url, Method = "GET" }) end)
+            local o, r = pcall(function() return request({ Url = raw, Method = "GET" }) end)
             if o and r and r.Body and #r.Body > 200 then body = r.Body end
         end
     end
-    if not body or #body < 200 then return nil end
-    local head = body:sub(1, 12)
-    if head:find("PNG") or head:find("JFIF") or head:find("RIFF") or body:sub(1, 3) == "\255\216\255" then
-        return body
-    end
-    return nil
-end
+    if not body then return nil, "no pude descargar la URL" end
 
-local function hashStr(s)
-    local h = 5381
-    for i = 1, #s do h = (h * 33 + s:byte(i)) % 99999989 end
-    return tostring(h)
-end
-
-local function resolve(input)
-    local raw = tostring(input or ""):gsub("%s", "")
-    if raw == "" then raw = DEFAULT_IMG end
-
-    local num = raw:match("^%d+$") or raw:match("rbxassetid://(%d+)")
-    if num then return "rbxassetid://" .. num, "id" end
-
-    local ext = raw:match("%.png") and ".png" or raw:match("%.webp") and ".webp"
-        or raw:match("%.jpe?g") and ".jpg" or ".png"
-
-    if not (writefile and isfile and getcustomasset) then
-        return raw, "url-directa"
-    end
-
-    local file = "vnr_" .. hashStr(raw) .. ext
-    if isfile(file) then
-        local ok, p = pcall(getcustomasset, file)
-        if ok and p then return p, "cache" end
-    end
-
-    local body = fetchImage(raw)
-    if not body then return nil, "fallo-descarga" end
-
-    local ok = pcall(function() writefile(file, body) end)
-    if not ok then return nil, "fallo-escritura" end
+    local file = "vnr_" .. tostring(#body) .. (raw:match("%.png") and ".png" or raw:match("%.webp") and ".webp" or ".png")
+    pcall(function() writefile(file, body) end)
     local ok2, path = pcall(getcustomasset, file)
-    if not (ok2 and path) then return nil, "fallo-asset" end
-    return path, "descargado"
+    if ok2 and path then return path end
+    return nil, "getcustomasset fallo"
 end
 
 --=================================================================
---  APLICAR TEXTURAS
+--  APLICAR
 --=================================================================
 local FACES_ALL = {
     Enum.NormalId.Front, Enum.NormalId.Back, Enum.NormalId.Left,
@@ -196,13 +177,15 @@ local function paintPart(part)
     if part.Transparency >= 1 then return end
     if part.Parent and part.Parent.Name == "Camera" then return end
     if CFG.skipChars and isCharPart(part) then return end
-    if CFG.minSize > 0 then
-        local s = math.max(part.Size.X, part.Size.Y, part.Size.Z)
-        if s < CFG.minSize then return end
+    if CFG.minSize > 0 and math.max(part.Size.X, part.Size.Y, part.Size.Z) < CFG.minSize then return end
+
+    if CFG.darken then
+        if not BACKUP[part] then BACKUP[part] = {} end
+        if BACKUP[part].Color == nil then BACKUP[part].Color = part.Color end
+        pcall(function() part.Color = Color3.fromRGB(38, 38, 44) end)
     end
 
-    local faces = CFG.allFaces and FACES_ALL or FACES_VIS
-    for _, face in ipairs(faces) do
+    for _, face in ipairs(CFG.allFaces and FACES_ALL or FACES_VIS) do
         local found
         for _, c in ipairs(part:GetChildren()) do
             if c:IsA("Texture") and c.Face == face then found = c break end
@@ -245,7 +228,7 @@ local function paintAll()
             pcall(paintPart, list[i])
             if i % 250 == 0 then task.wait() end
         end
-        notify("Listo", paintedCount .. " partes texturizadas del mapa.", 4)
+        notify("Listo", paintedCount .. " partes texturizadas.", 4)
     end)
 end
 
@@ -271,11 +254,8 @@ local function refreshTiling()
     end
 end
 
---=================================================================
---  DIAGNOSTICO
---=================================================================
 local function diagnose()
-    local parts, meshes, sa, terrain = 0, 0, 0, WS:FindFirstChildOfClass("Terrain") ~= nil
+    local parts, meshes, sa = 0, 0, 0
     local mats = {}
     for _, d in ipairs(WS:GetDescendants()) do
         if d:IsA("BasePart") and not d:IsA("Terrain") then
@@ -286,19 +266,13 @@ local function diagnose()
         end
     end
     local top = {}
-    for name, n in pairs(mats) do table.insert(top, { n, name }) end
+    for n, c in pairs(mats) do table.insert(top, { c, n }) end
     table.sort(top, function(a, b) return a[1] > b[1] end)
     local txt = {}
-    for i = 1, math.min(4, #top) do
-        table.insert(txt, top[i][2] .. " x" .. top[i][1])
-    end
-    local msg = "partes: " .. parts .. " | mesh: " .. meshes .. " | terrain: " .. tostring(terrain)
-        .. " | surfaceApp: " .. sa .. " | materiales: " .. table.concat(txt, ", ")
-    notify("Diagnostico", msg, 8)
-    print("[VENICE] " .. msg)
-    print("[VENICE] writefile: " .. tostring(writefile ~= nil)
-        .. " | getcustomasset: " .. tostring(getcustomasset ~= nil))
-    return msg
+    for i = 1, math.min(4, #top) do table.insert(txt, top[i][2] .. " x" .. top[i][1]) end
+    notify("Diagnostico", "partes: " .. parts .. " | mesh: " .. meshes .. " | surfaceApp: " .. sa
+        .. " | mats: " .. table.concat(txt, ", "), 9)
+    print("[VENICE] partes:", parts, "mesh:", meshes, "surfaceApp:", sa)
 end
 
 --=================================================================
@@ -311,7 +285,8 @@ end
 local function playSound(txt)
     local raw = tostring(txt or ""):gsub("%s", "")
     if raw == "" then return end
-    local a = raw:match("^%d+$") and ("rbxassetid://" .. raw) or raw
+    local id = raw:match("^%d+$") or raw:match("rbxassetid://(%d+)")
+    local a = id and ("rbxassetid://" .. id) or raw
     stopSound()
     local s = Instance.new("Sound")
     s.SoundId = a
@@ -327,9 +302,8 @@ end
 --  UI
 --=================================================================
 local ACCENT = Color3.fromRGB(140, 110, 255)
-local BG, PANEL, TEXT, MUTED =
-    Color3.fromRGB(18, 18, 20), Color3.fromRGB(26, 26, 31),
-    Color3.fromRGB(228, 228, 232), Color3.fromRGB(150, 150, 158)
+local BG, TEXT, MUTED =
+    Color3.fromRGB(18, 18, 20), Color3.fromRGB(228, 228, 232), Color3.fromRGB(150, 150, 158)
 
 local function new(class, props, parent)
     local i = Instance.new(class)
@@ -339,14 +313,14 @@ local function new(class, props, parent)
 end
 
 local Main = new("Frame", {
-    Size = UDim2.new(0, 320, 0, 440), Position = UDim2.new(0, 16, 0, 60),
+    Size = UDim2.new(0, 320, 0, 430), Position = UDim2.new(0, 16, 0, 60),
     BackgroundColor3 = BG, BorderColor3 = Color3.fromRGB(60, 60, 68),
 }, ScreenGui)
 
 new("TextLabel", {
     Size = UDim2.new(1, -12, 0, 22), Position = UDim2.new(0, 8, 0, 3),
     BackgroundTransparency = 1, Font = Enum.Font.Code, TextSize = 12,
-    Text = "venice x rivals | texture injector v2", TextColor3 = TEXT,
+    Text = "venice x rivals | texture injector v3", TextColor3 = TEXT,
     TextXAlignment = Enum.TextXAlignment.Left,
 }, Main)
 
@@ -380,12 +354,12 @@ local function section(txt, order)
     }, Scroll)
 end
 
-local function button(txt, order, color, cb)
+local function button(txt, order, color, cb, parent)
     local b = new("TextButton", {
         Size = UDim2.new(1, 0, 0, 32), BackgroundColor3 = color or Color3.fromRGB(25, 25, 30),
         BorderColor3 = Color3.fromRGB(65, 65, 72), Font = Enum.Font.Code, TextSize = 11,
         Text = txt, TextColor3 = TEXT, LayoutOrder = order,
-    }, Scroll)
+    }, parent or Scroll)
     b.MouseButton1Click:Connect(function()
         local ok, err = pcall(cb)
         if not ok then notify("Error", tostring(err), 6) end
@@ -450,86 +424,84 @@ local function sliderRow(label, min, max, default, order, cb)
 end
 
 -- ---------------- contenido ----------------
-section("IMAGEN", 1)
+section("DECALS DE CRUZ CON ALAS", 1)
 
 local Preview = new("ImageLabel", {
-    Size = UDim2.new(0, 78, 0, 78), Position = UDim2.new(1, -84, 0, 0),
-    BackgroundColor3 = Color3.fromRGB(240, 240, 245), BorderColor3 = Color3.fromRGB(80, 80, 90),
-    LayoutOrder = 1, Image = "",
+    Size = UDim2.new(0, 80, 0, 80), Position = UDim2.new(1, -86, 0, 0),
+    BackgroundColor3 = Color3.fromRGB(230, 230, 235), BorderColor3 = Color3.fromRGB(80, 80, 90),
+    LayoutOrder = 1, Image = CFG.asset,
 }, Scroll)
 
-local ImgBox = new("TextBox", {
-    Size = UDim2.new(1, -94, 0, 60), BackgroundColor3 = Color3.fromRGB(22, 22, 26),
-    BorderColor3 = Color3.fromRGB(60, 60, 66), Font = Enum.Font.Code, TextSize = 10,
-    Text = DEFAULT_IMG, TextWrapped = true, TextColor3 = TEXT,
-    ClearTextOnFocus = false, LayoutOrder = 2, TextYAlignment = Enum.TextYAlignment.Top,
+local presetsFrame = new("Frame", {
+    Size = UDim2.new(1, -96, 0, 80), BackgroundTransparency = 1, LayoutOrder = 2,
+}, Scroll)
+new("UIListLayout", { Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder }, presetsFrame)
+
+for i, p in ipairs(PRESETS) do
+    button(p.name .. "  (" .. p.id .. ")", i, Color3.fromRGB(32, 28, 44), function()
+        CFG.asset = "rbxassetid://" .. p.id
+        Preview.Image = CFG.asset
+        notify("Decal elegido", p.name .. " -> dale APLICAR.", 3)
+    end, presetsFrame)
+end
+
+section("O PON TU PROPIA ID", 3)
+local IdBox = new("TextBox", {
+    Size = UDim2.new(1, 0, 0, 30), BackgroundColor3 = Color3.fromRGB(22, 22, 26),
+    BorderColor3 = Color3.fromRGB(60, 60, 66), Font = Enum.Font.Code, TextSize = 11,
+    Text = "17814474604", TextColor3 = TEXT, ClearTextOnFocus = false, LayoutOrder = 4,
 }, Scroll)
 
-button("CARGAR / PROBAR IMAGEN", 3, Color3.fromRGB(40, 32, 62), function()
-    local a, how = resolve(ImgBox.Text)
-    if not a then
-        notify("Fallo", "No pude descargar esa imagen. Prueba con una ID de Roblox.", 7)
-        return
-    end
+button("CARGAR ESA ID", 5, Color3.fromRGB(40, 32, 62), function()
+    local a, err = resolve(IdBox.Text)
+    if not a then notify("Fallo", err or "ID invalida", 7) return end
     CFG.asset = a
     Preview.Image = a
-    notify("Imagen cargada", "Origen: " .. tostring(how) .. ". Revisa la vista previa.", 5)
+    notify("ID cargada", a .. " -> revisa la vista previa.", 4)
 end)
 
-button("APLICAR A TODO EL MAPA", 4, Color3.fromRGB(55, 42, 92), function()
-    if not CFG.asset then
-        local a, how = resolve(ImgBox.Text)
-        if not a then notify("Fallo", "No pude cargar la imagen.", 7) return end
-        CFG.asset = a
-        Preview.Image = a
-    end
+button("APLICAR A TODO EL MAPA", 6, Color3.fromRGB(55, 42, 92), function() paintAll() end)
+button("RESTAURAR MAPA", 7, Color3.fromRGB(30, 30, 36), function() restore() end)
+
+section("OPCIONES", 8)
+toggleRow("todas las caras (6)", 9, true, function(v) CFG.allFaces = v end)
+toggleRow("oscurecer mapa (mas contraste)", 10, false, function(v)
+    CFG.darken = v
     paintAll()
 end)
+toggleRow("excluir jugadores / armas", 11, true, function(v) CFG.skipChars = v end)
+toggleRow("auto-aplicar a partes nuevas", 12, true, function(v) CFG.autoNew = v end)
 
-button("RESTAURAR MAPA", 5, Color3.fromRGB(30, 30, 36), function() restore() end)
-
-section("OPCIONES", 6)
-toggleRow("todas las caras (6)", 7, true, function(v) CFG.allFaces = v end)
-toggleRow("excluir jugadores / armas", 8, true, function(v) CFG.skipChars = v end)
-toggleRow("auto-aplicar a partes nuevas", 9, true, function(v) CFG.autoNew = v end)
-
-sliderRow("Repeticion de textura", 1, 40, 8, 10, function(v)
+sliderRow("Repeticion de textura", 1, 40, 8, 13, function(v)
     CFG.tiling = v
     refreshTiling()
 end)
-sliderRow("Tamano minimo de parte", 0, 20, 1, 11, function(v)
-    CFG.minSize = v
-end)
+sliderRow("Tamano minimo de parte", 0, 20, 1, 14, function(v) CFG.minSize = v end)
 
-section("SONIDO", 12)
+section("SONIDO", 15)
 local SndBox = new("TextBox", {
     Size = UDim2.new(1, 0, 0, 28), BackgroundColor3 = Color3.fromRGB(22, 22, 26),
     BorderColor3 = Color3.fromRGB(60, 60, 66), Font = Enum.Font.Code, TextSize = 11,
-    Text = "", PlaceholderText = "ID o URL de sonido", PlaceholderColor3 = MUTED,
-    TextColor3 = TEXT, ClearTextOnFocus = false, LayoutOrder = 13,
+    Text = "", PlaceholderText = "ID de sonido", PlaceholderColor3 = MUTED,
+    TextColor3 = TEXT, ClearTextOnFocus = false, LayoutOrder = 16,
 }, Scroll)
 
-button("Reproducir", 14, Color3.fromRGB(40, 32, 62), function()
-    playSound(SndBox.Text)
-    notify("Sonido", "Reproduciendo...", 2)
-end)
-button("Detener", 15, Color3.fromRGB(30, 30, 36), function() stopSound() end)
-toggleRow("loop", 16, false, function(v) CFG.loop = v if CFG.sound then CFG.sound.Looped = v end end)
-sliderRow("Volumen", 0, 3, 1, 17, function(v) CFG.volume = v if CFG.sound then CFG.sound.Volume = v end end)
-sliderRow("Tono", 0.2, 3, 1, 18, function(v) CFG.pitch = v if CFG.sound then CFG.sound.PlaybackSpeed = v end end)
+button("Reproducir", 17, Color3.fromRGB(40, 32, 62), function() playSound(SndBox.Text) end)
+button("Detener", 18, Color3.fromRGB(30, 30, 36), function() stopSound() end)
+toggleRow("loop", 19, false, function(v) CFG.loop = v if CFG.sound then CFG.sound.Looped = v end end)
+sliderRow("Volumen", 0, 3, 1, 20, function(v) CFG.volume = v if CFG.sound then CFG.sound.Volume = v end end)
+sliderRow("Tono", 0.2, 3, 1, 21, function(v) CFG.pitch = v if CFG.sound then CFG.sound.PlaybackSpeed = v end end)
 
-section("EXTRA", 19)
-button("DIAGNOSTICO DEL MAPA", 20, Color3.fromRGB(30, 30, 36), function() diagnose() end)
+button("DIAGNOSTICO DEL MAPA", 22, Color3.fromRGB(30, 30, 36), function() diagnose() end)
 
 new("TextLabel", {
-    Size = UDim2.new(1, 0, 0, 58), BackgroundTransparency = 1, Font = Enum.Font.Code,
-    TextSize = 10, TextWrapped = true, LayoutOrder = 21, TextColor3 = Color3.fromRGB(235, 180, 90),
+    Size = UDim2.new(1, 0, 0, 44), BackgroundTransparency = 1, Font = Enum.Font.Code,
+    TextSize = 10, TextWrapped = true, LayoutOrder = 23, TextColor3 = Color3.fromRGB(235, 180, 90),
     TextXAlignment = Enum.TextXAlignment.Left,
-    Text = "1) CARGAR / PROBAR IMAGEN -> si la vista previa sale en blanco, la descarga fallo.\n"
-        .. "2) APLICAR. Si el mapa no cambia, dale DIAGNOSTICO y dime que dice.",
+    Text = "Toca un decal -> mira la preview -> APLICAR.\nSi la preview sale blanca, ese decal no sirve, prueba otro.",
 }, Scroll)
 
-button("UNLOAD SCRIPT", 22, Color3.fromRGB(60, 25, 25), function()
+button("UNLOAD SCRIPT", 24, Color3.fromRGB(60, 25, 25), function()
     if isUnloaded then return end
     isUnloaded = true
     for _, c in ipairs(Conn) do pcall(function() c:Disconnect() end) end
@@ -548,16 +520,6 @@ track(WS.DescendantAdded:Connect(function(obj)
     end
 end))
 
---=================================================================
---  ARRANQUE
---=================================================================
 task.spawn(function()
-    local a, how = resolve(DEFAULT_IMG)
-    if a then
-        CFG.asset = a
-        Preview.Image = a
-        notify("Script cargado", "Imagen lista (" .. tostring(how) .. "). Dale APLICAR.", 5)
-    else
-        notify("Script cargado", "No pude bajar la cruz, pega una ID de Roblox.", 6)
-    end
+    notify("Script cargado", "Toca un decal de cruz y dale APLICAR.", 5)
 end)
