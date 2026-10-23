@@ -1,21 +1,23 @@
 --[[=================================================================
-    VENICE x RIVALS - TEXTURE INJECTOR v3
+    VENICE x RIVALS - SELLOS DE ALAS v7 (FINAL)
     ------------------------------------------------------------------
-    * Usa IDs de Roblox (no URLs) -> carga al instante, sin descargar
-    * Botones con 4 decals de cruz con alas ya listos
-    * Vista previa + aplicar a todo el mapa + restore + sonido
-    * Abrir / cerrar: RightShift o el boton "ui"
+    * Paredes + TERRENO en blanco con estampas
+    * Boton de BRILLO con intensidad (para que el blanco se vea blanco)
+    * Galeria + importador de IDs (se guarda en disco)
+    * Preview, restore y unload completo
 ===================================================================]]
 
 local Players      = game:GetService("Players")
 local UIS          = game:GetService("UserInputService")
 local SoundService = game:GetService("SoundService")
 local TweenService = game:GetService("TweenService")
+local Lighting     = game:GetService("Lighting")
+local MaterialService = game:GetService("MaterialService")
 local LP           = Players.LocalPlayer
 local WS           = workspace
 
-if getgenv and getgenv().VeniceRivalsTex3 then
-    pcall(function() getgenv().VeniceRivalsTex3:Destroy() end)
+if getgenv and getgenv().VeniceWings7 then
+    pcall(function() getgenv().VeniceWings7:Destroy() end)
 end
 
 local isUnloaded = false
@@ -26,39 +28,89 @@ local TargetParent = game:GetService("CoreGui")
 if gethui then pcall(function() TargetParent = gethui() end) end
 
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "VeniceRivalsTex3"
+ScreenGui.Name = "VeniceWings7"
 ScreenGui.ResetOnSpawn = false
 pcall(function() ScreenGui.Parent = TargetParent end)
 if not ScreenGui.Parent then ScreenGui.Parent = LP:WaitForChild("PlayerGui") end
-if getgenv then getgenv().VeniceRivalsTex3 = ScreenGui end
+if getgenv then getgenv().VeniceWings7 = ScreenGui end
 
 --=================================================================
---  CONFIG
+--  LISTA DE IMAGENES
 --=================================================================
-local PRESETS = {
-    { name = "cruz + alas",   id = "17814474604" },
-    { name = "sketch blanco", id = "100381501972125" },
-    { name = "gotica",        id = "102541166446822" },
-    { name = "wings & cross", id = "14983316111" },
+local SAVE_FILE = "venice_wings_ids.txt"
+
+local DEFAULT_IDS = {
+    "100381501972125", "17814474604", "14983316111", "102541166446822",
+    "113627759349696", "14148300044", "98658629679207", "114580112063066",
+    "105148240247620", "17662891564",
+}
+local IDS = {}
+
+local function loadIDS()
+    local ok, txt = pcall(function()
+        if readfile and isfile and isfile(SAVE_FILE) then return readfile(SAVE_FILE) end
+    end)
+    IDS = {}
+    if ok and txt then
+        for id in tostring(txt):gmatch("%d+") do table.insert(IDS, id) end
+    end
+    if #IDS == 0 then
+        for _, id in ipairs(DEFAULT_IDS) do table.insert(IDS, id) end
+    end
+end
+
+local function saveIDS()
+    pcall(function() if writefile then writefile(SAVE_FILE, table.concat(IDS, "\n")) end end)
+end
+
+local WALL_COLORS = {
+    { name = "blanca",   color = Color3.fromRGB(255, 255, 255) },
+    { name = "gris",     color = Color3.fromRGB(150, 150, 155) },
+    { name = "negra",    color = Color3.fromRGB(32, 32, 38) },
+    { name = "original", color = nil },
+}
+
+local TEX_COLORS = {
+    { name = "negra",  color = Color3.fromRGB(10, 10, 10) },
+    { name = "blanca", color = Color3.fromRGB(255, 255, 255) },
+    { name = "roja",   color = Color3.fromRGB(210, 40, 40) },
+    { name = "dorada", color = Color3.fromRGB(255, 190, 60) },
 }
 
 local CFG = {
-    asset     = "rbxassetid://17814474604",
-    tiling    = 8,
-    allFaces  = true,
-    minSize   = 1,
-    skipChars = true,
-    darken    = false,
-    autoNew   = true,
-    volume    = 1,
-    pitch     = 1,
-    loop      = false,
-    sound     = nil,
+    asset      = nil,
+    tiling     = 5,
+    allFaces   = true,
+    minSize    = 1,
+    skipChars  = true,
+    autoNew    = true,
+    randomOff  = true,
+    terrain    = true,
+    wallColor  = Color3.fromRGB(255, 255, 255),
+    texColor   = Color3.fromRGB(10, 10, 10),
+    bright     = false,
+    brightLvl  = 3,
+    volume     = 1,
+    pitch      = 1,
+    loop       = false,
+    sound      = nil,
 }
 
 local CREATED = {}
 local BACKUP  = {}
 local paintedCount = 0
+local Terrain = WS:FindFirstChildOfClass("Terrain")
+
+local TERRAIN_MATS = {
+    Enum.Material.Grass, Enum.Material.Sand, Enum.Material.Rock,
+    Enum.Material.Snow, Enum.Material.Ground, Enum.Material.Mud,
+    Enum.Material.LeafyGrass, Enum.Material.Salt, Enum.Material.Sandstone,
+    Enum.Material.Basalt, Enum.Material.Asphalt, Enum.Material.CrackedLava,
+    Enum.Material.Limestone, Enum.Material.Pavement, Enum.Material.Dirt,
+    Enum.Material.Ice, Enum.Material.Glacier, Enum.Material.Mud,
+}
+local TERRAIN_COLOR_BACKUP = nil
+local TERRAIN_VARIANTS = {}
 
 --=================================================================
 --  NOTIFICACIONES
@@ -118,43 +170,129 @@ local function notify(title, body, dur)
 end
 
 --=================================================================
---  RESOLVER ID
+--  BRILLO
 --=================================================================
-local function resolve(input)
-    local raw = tostring(input or ""):gsub("%s", "")
-    if raw == "" then return nil end
+local LIGHT_BACKUP = nil
+local ATMO = nil
 
-    local num = raw:match("^%d+$")
-        or raw:match("rbxassetid://(%d+)")
-        or raw:match("rbxthumb://.-(%d+)")
-        or raw:match("roblox%.com/library/(%d+)")
-        or raw:match("roblox%.com/catalog/(%d+)")
-        or raw:match("roblox%.com/(%d+)")
-    if num then return "rbxassetid://" .. num end
-
-    -- es una URL externa: necesita writefile + getcustomasset
-    if not (writefile and isfile and getcustomasset) then
-        return nil, "tu executor no tiene getcustomasset, usa una ID"
+local function applyBright()
+    if not CFG.bright then return end
+    if not LIGHT_BACKUP then
+        LIGHT_BACKUP = {
+            Brightness = Lighting.Brightness,
+            OutdoorAmbient = Lighting.OutdoorAmbient,
+            Ambient = Lighting.Ambient,
+            ClockTime = Lighting.ClockTime,
+            ExposureCompensation = Lighting.ExposureCompensation,
+            GlobalShadows = Lighting.GlobalShadows,
+            FogEnd = Lighting.FogEnd,
+            ColorShift_Top = Lighting.ColorShift_Top,
+            ColorShift_Bottom = Lighting.ColorShift_Bottom,
+        }
+        ATMO = Lighting:FindFirstChildOfClass("Atmosphere")
+        if ATMO then LIGHT_BACKUP.AtmoDensity = ATMO.Density end
     end
-    local body
-    local ok = pcall(function() body = game:HttpGet(raw) end)
-    if not (ok and body and #body > 200) then
-        if request then
-            local o, r = pcall(function() return request({ Url = raw, Method = "GET" }) end)
-            if o and r and r.Body and #r.Body > 200 then body = r.Body end
-        end
-    end
-    if not body then return nil, "no pude descargar la URL" end
 
-    local file = "vnr_" .. tostring(#body) .. (raw:match("%.png") and ".png" or raw:match("%.webp") and ".webp" or ".png")
-    pcall(function() writefile(file, body) end)
-    local ok2, path = pcall(getcustomasset, file)
-    if ok2 and path then return path end
-    return nil, "getcustomasset fallo"
+    local lv = CFG.brightLvl
+    pcall(function() Lighting.Brightness = 1 + lv * 0.9 end)
+    pcall(function() Lighting.OutdoorAmbient = Color3.fromRGB(150, 150, 160) end)
+    pcall(function() Lighting.Ambient = Color3.fromRGB(130, 130, 140) end)
+    pcall(function() Lighting.ClockTime = 14 end)
+    pcall(function() Lighting.ExposureCompensation = 0.08 * lv end)
+    pcall(function() Lighting.GlobalShadows = false end)
+    pcall(function() Lighting.FogEnd = 100000 end)
+    pcall(function() Lighting.ColorShift_Top = Color3.fromRGB(255, 255, 255) end)
+    if ATMO then pcall(function() ATMO.Density = 0.05 end) end
+end
+
+local function restoreBright()
+    if not LIGHT_BACKUP then return end
+    for k, v in pairs(LIGHT_BACKUP) do
+        if k ~= "AtmoDensity" then pcall(function() Lighting[k] = v end) end
+    end
+    if ATMO and LIGHT_BACKUP.AtmoDensity then
+        pcall(function() ATMO.Density = LIGHT_BACKUP.AtmoDensity end)
+    end
+    LIGHT_BACKUP = nil
 end
 
 --=================================================================
---  APLICAR
+--  TERRENO
+--=================================================================
+local function clearTerrainVariants()
+    if Terrain then
+        for _, m in ipairs(TERRAIN_MATS) do
+            pcall(function() Terrain:SetMaterialVariant(m, nil) end)
+        end
+    end
+    for _, mv in pairs(TERRAIN_VARIANTS) do pcall(function() mv:Destroy() end) end
+    TERRAIN_VARIANTS = {}
+end
+
+local function paintTerrain()
+    if not Terrain or not CFG.terrain or not CFG.asset then return end
+
+    if not TERRAIN_COLOR_BACKUP then
+        TERRAIN_COLOR_BACKUP = {}
+        for _, m in ipairs(TERRAIN_MATS) do
+            local ok, c = pcall(function() return Terrain:GetMaterialColor(m) end)
+            if ok and c then TERRAIN_COLOR_BACKUP[m] = c end
+        end
+    end
+
+    clearTerrainVariants()
+
+    for _, m in ipairs(TERRAIN_MATS) do
+        pcall(function() Terrain:SetMaterialColor(m, CFG.wallColor or Color3.new(1, 1, 1)) end)
+
+        local name = "VN_T_" .. m.Name
+        local old = MaterialService:FindFirstChild(name)
+        if old then old:Destroy() end
+
+        local mv = Instance.new("MaterialVariant")
+        mv.Name = name
+        pcall(function() mv.BasePartMaterial = m end)
+        local okA = pcall(function() mv.AlbedoMap = CFG.asset end)
+        if not okA then pcall(function() mv.TextureMap = CFG.asset end) end
+        pcall(function()
+            mv.StudsPerTileU = CFG.tiling
+            mv.StudsPerTileV = CFG.tiling
+        end)
+        pcall(function() mv.Parent = MaterialService end)
+
+        if mv.Parent then
+            TERRAIN_VARIANTS[m.Name] = mv
+            pcall(function() Terrain:SetMaterialVariant(m, mv) end)
+        end
+    end
+end
+
+local function updateTerrainSettings()
+    if not TERRAIN_COLOR_BACKUP then return end
+    for _, mv in pairs(TERRAIN_VARIANTS) do
+        pcall(function()
+            mv.StudsPerTileU = CFG.tiling
+            mv.StudsPerTileV = CFG.tiling
+        end)
+    end
+    for _, m in ipairs(TERRAIN_MATS) do
+        pcall(function() Terrain:SetMaterialColor(m, CFG.wallColor or Color3.new(1, 1, 1)) end)
+    end
+end
+
+local function restoreTerrain()
+    if not Terrain then return end
+    clearTerrainVariants()
+    if TERRAIN_COLOR_BACKUP then
+        for m, c in pairs(TERRAIN_COLOR_BACKUP) do
+            pcall(function() Terrain:SetMaterialColor(m, c) end)
+        end
+        TERRAIN_COLOR_BACKUP = nil
+    end
+end
+
+--=================================================================
+--  APLICAR EN PARTES
 --=================================================================
 local FACES_ALL = {
     Enum.NormalId.Front, Enum.NormalId.Back, Enum.NormalId.Left,
@@ -171,6 +309,23 @@ local function isCharPart(part)
     return m ~= nil and m:FindFirstChildOfClass("Humanoid") ~= nil
 end
 
+local function setupTexture(t)
+    t.Texture = CFG.asset
+    t.StudsPerTileU = CFG.tiling
+    t.StudsPerTileV = CFG.tiling
+    t.Transparency = 0
+    if CFG.texColor then pcall(function() t.Color3 = CFG.texColor end) end
+    if CFG.randomOff then
+        pcall(function()
+            t.OffsetStudsU = math.random() * CFG.tiling
+            t.OffsetStudsV = math.random() * CFG.tiling
+            t.Rotation = math.random(0, 3) * 90
+        end)
+    else
+        pcall(function() t.OffsetStudsU = 0 t.OffsetStudsV = 0 t.Rotation = 0 end)
+    end
+end
+
 local function paintPart(part)
     if isUnloaded or not CFG.asset then return end
     if not part:IsA("BasePart") or part:IsA("Terrain") then return end
@@ -179,10 +334,10 @@ local function paintPart(part)
     if CFG.skipChars and isCharPart(part) then return end
     if CFG.minSize > 0 and math.max(part.Size.X, part.Size.Y, part.Size.Z) < CFG.minSize then return end
 
-    if CFG.darken then
+    if CFG.wallColor then
         if not BACKUP[part] then BACKUP[part] = {} end
         if BACKUP[part].Color == nil then BACKUP[part].Color = part.Color end
-        pcall(function() part.Color = Color3.fromRGB(38, 38, 44) end)
+        pcall(function() part.Color = CFG.wallColor end)
     end
 
     for _, face in ipairs(CFG.allFaces and FACES_ALL or FACES_VIS) do
@@ -193,24 +348,16 @@ local function paintPart(part)
         if found then
             if not BACKUP[found] then
                 BACKUP[found] = {
-                    Texture = found.Texture,
-                    StudsPerTileU = found.StudsPerTileU,
-                    StudsPerTileV = found.StudsPerTileV,
-                    Transparency = found.Transparency,
+                    Texture = found.Texture, StudsPerTileU = found.StudsPerTileU,
+                    StudsPerTileV = found.StudsPerTileV, Transparency = found.Transparency,
+                    Color3 = found.Color3,
                 }
             end
-            pcall(function()
-                found.Texture = CFG.asset
-                found.StudsPerTileU = CFG.tiling
-                found.StudsPerTileV = CFG.tiling
-                found.Transparency = 0
-            end)
+            pcall(setupTexture, found)
         else
             local t = Instance.new("Texture")
             t.Face = face
-            t.Texture = CFG.asset
-            t.StudsPerTileU = CFG.tiling
-            t.StudsPerTileV = CFG.tiling
+            pcall(setupTexture, t)
             t.Parent = part
             CREATED[t] = true
         end
@@ -228,7 +375,8 @@ local function paintAll()
             pcall(paintPart, list[i])
             if i % 250 == 0 then task.wait() end
         end
-        notify("Listo", paintedCount .. " partes texturizadas.", 4)
+        pcall(paintTerrain)
+        notify("Listo", paintedCount .. " partes + terreno estampados.", 4)
     end)
 end
 
@@ -242,37 +390,14 @@ local function restore()
     for inst in pairs(CREATED) do pcall(function() inst:Destroy() end) end
     CREATED = {}
     paintedCount = 0
-    notify("Restaurado", "El mapa volvio a lo normal.", 3)
+    pcall(restoreTerrain)
+    notify("Restaurado", "Mapa y terreno volvieron a lo normal.", 3)
 end
 
-local function refreshTiling()
-    for inst in pairs(CREATED) do
-        pcall(function() inst.StudsPerTileU = CFG.tiling inst.StudsPerTileV = CFG.tiling end)
-    end
-    for inst in pairs(BACKUP) do
-        pcall(function() inst.StudsPerTileU = CFG.tiling inst.StudsPerTileV = CFG.tiling end)
-    end
-end
-
-local function diagnose()
-    local parts, meshes, sa = 0, 0, 0
-    local mats = {}
-    for _, d in ipairs(WS:GetDescendants()) do
-        if d:IsA("BasePart") and not d:IsA("Terrain") then
-            parts += 1
-            if d:IsA("MeshPart") then meshes += 1 end
-            if d:FindFirstChildOfClass("SurfaceAppearance") then sa += 1 end
-            mats[d.Material.Name] = (mats[d.Material.Name] or 0) + 1
-        end
-    end
-    local top = {}
-    for n, c in pairs(mats) do table.insert(top, { c, n }) end
-    table.sort(top, function(a, b) return a[1] > b[1] end)
-    local txt = {}
-    for i = 1, math.min(4, #top) do table.insert(txt, top[i][2] .. " x" .. top[i][1]) end
-    notify("Diagnostico", "partes: " .. parts .. " | mesh: " .. meshes .. " | surfaceApp: " .. sa
-        .. " | mats: " .. table.concat(txt, ", "), 9)
-    print("[VENICE] partes:", parts, "mesh:", meshes, "surfaceApp:", sa)
+local function refresh()
+    for inst in pairs(CREATED) do pcall(setupTexture, inst) end
+    for inst in pairs(BACKUP) do pcall(setupTexture, inst) end
+    pcall(updateTerrainSettings)
 end
 
 --=================================================================
@@ -313,14 +438,14 @@ local function new(class, props, parent)
 end
 
 local Main = new("Frame", {
-    Size = UDim2.new(0, 320, 0, 430), Position = UDim2.new(0, 16, 0, 60),
+    Size = UDim2.new(0, 330, 0, 440), Position = UDim2.new(0, 12, 0, 55),
     BackgroundColor3 = BG, BorderColor3 = Color3.fromRGB(60, 60, 68),
 }, ScreenGui)
 
 new("TextLabel", {
     Size = UDim2.new(1, -12, 0, 22), Position = UDim2.new(0, 8, 0, 3),
     BackgroundTransparency = 1, Font = Enum.Font.Code, TextSize = 12,
-    Text = "venice x rivals | texture injector v3", TextColor3 = TEXT,
+    Text = "venice x rivals | v7 final", TextColor3 = TEXT,
     TextXAlignment = Enum.TextXAlignment.Left,
 }, Main)
 
@@ -354,11 +479,11 @@ local function section(txt, order)
     }, Scroll)
 end
 
-local function button(txt, order, color, cb, parent)
+local function button(txt, order, color, cb, parent, size)
     local b = new("TextButton", {
-        Size = UDim2.new(1, 0, 0, 32), BackgroundColor3 = color or Color3.fromRGB(25, 25, 30),
-        BorderColor3 = Color3.fromRGB(65, 65, 72), Font = Enum.Font.Code, TextSize = 11,
-        Text = txt, TextColor3 = TEXT, LayoutOrder = order,
+        Size = size or UDim2.new(1, 0, 0, 30), BackgroundColor3 = color or Color3.fromRGB(25, 25, 30),
+        BorderColor3 = Color3.fromRGB(65, 65, 72), Font = Enum.Font.Code, TextSize = 10,
+        Text = txt, TextColor3 = TEXT, LayoutOrder = order, TextWrapped = true,
     }, parent or Scroll)
     b.MouseButton1Click:Connect(function()
         local ok, err = pcall(cb)
@@ -403,7 +528,7 @@ local function sliderRow(label, min, max, default, order, cb)
         a = math.clamp(a, 0, 1)
         fill.Size = UDim2.new(a, 0, 1, 0)
         local v = min + (max - min) * a
-        lbl.Text = label .. ": " .. string.format("%.2f", v)
+        lbl.Text = label .. ": " .. string.format("%.1f", v)
         cb(v)
     end
     set((default - min) / (max - min))
@@ -424,88 +549,154 @@ local function sliderRow(label, min, max, default, order, cb)
 end
 
 -- ---------------- contenido ----------------
-section("DECALS DE CRUZ CON ALAS", 1)
+section("1. IMAGENES (toca una)", 1)
 
 local Preview = new("ImageLabel", {
-    Size = UDim2.new(0, 80, 0, 80), Position = UDim2.new(1, -86, 0, 0),
-    BackgroundColor3 = Color3.fromRGB(230, 230, 235), BorderColor3 = Color3.fromRGB(80, 80, 90),
-    LayoutOrder = 1, Image = CFG.asset,
+    Size = UDim2.new(0, 86, 0, 86), Position = UDim2.new(1, -92, 0, 0),
+    BackgroundColor3 = Color3.fromRGB(75, 75, 85), BorderColor3 = Color3.fromRGB(95, 95, 105),
+    LayoutOrder = 1, Image = "",
 }, Scroll)
 
-local presetsFrame = new("Frame", {
-    Size = UDim2.new(1, -96, 0, 80), BackgroundTransparency = 1, LayoutOrder = 2,
+local Grid = new("Frame", {
+    Size = UDim2.new(1, -100, 0, 132), BackgroundTransparency = 1, LayoutOrder = 2,
 }, Scroll)
-new("UIListLayout", { Padding = UDim.new(0, 4), SortOrder = Enum.SortOrder.LayoutOrder }, presetsFrame)
+new("UIGridLayout", {
+    CellSize = UDim2.new(0.5, -3, 0, 30), CellPadding = UDim2.new(0, 6, 0, 6),
+    SortOrder = Enum.SortOrder.LayoutOrder,
+}, Grid)
 
-for i, p in ipairs(PRESETS) do
-    button(p.name .. "  (" .. p.id .. ")", i, Color3.fromRGB(32, 28, 44), function()
-        CFG.asset = "rbxassetid://" .. p.id
-        Preview.Image = CFG.asset
-        notify("Decal elegido", p.name .. " -> dale APLICAR.", 3)
-    end, presetsFrame)
+local function pick(id)
+    CFG.asset = "rbxassetid://" .. id
+    Preview.Image = CFG.asset
+    if TERRAIN_COLOR_BACKUP then pcall(paintTerrain) end
+    notify("Elegido", "ID " .. id, 3)
 end
 
-section("O PON TU PROPIA ID", 3)
-local IdBox = new("TextBox", {
-    Size = UDim2.new(1, 0, 0, 30), BackgroundColor3 = Color3.fromRGB(22, 22, 26),
-    BorderColor3 = Color3.fromRGB(60, 60, 66), Font = Enum.Font.Code, TextSize = 11,
-    Text = "17814474604", TextColor3 = TEXT, ClearTextOnFocus = false, LayoutOrder = 4,
+local function rebuild()
+    for _, c in ipairs(Grid:GetChildren()) do
+        if c:IsA("TextButton") then c:Destroy() end
+    end
+    for i, id in ipairs(IDS) do
+        button("#" .. i, i, Color3.fromRGB(32, 28, 44), function() pick(id) end, Grid)
+    end
+    Grid.Size = UDim2.new(1, -100, 0, math.max(1, math.ceil(#IDS / 2)) * 36)
+    if #IDS > 0 and not CFG.asset then
+        CFG.asset = "rbxassetid://" .. IDS[1]
+        Preview.Image = CFG.asset
+    end
+end
+
+local ImportBox = new("TextBox", {
+    Size = UDim2.new(1, 0, 0, 34), BackgroundColor3 = Color3.fromRGB(22, 22, 26),
+    BorderColor3 = Color3.fromRGB(60, 60, 66), Font = Enum.Font.Code, TextSize = 10,
+    Text = "", PlaceholderText = "pega IDs separadas por coma o salto de linea",
+    PlaceholderColor3 = MUTED, TextColor3 = TEXT, ClearTextOnFocus = false,
+    TextWrapped = true, LayoutOrder = 3,
 }, Scroll)
 
-button("CARGAR ESA ID", 5, Color3.fromRGB(40, 32, 62), function()
-    local a, err = resolve(IdBox.Text)
-    if not a then notify("Fallo", err or "ID invalida", 7) return end
-    CFG.asset = a
-    Preview.Image = a
-    notify("ID cargada", a .. " -> revisa la vista previa.", 4)
+button("IMPORTAR LISTA", 4, Color3.fromRGB(45, 36, 70), function()
+    local found = {}
+    for id in tostring(ImportBox.Text):gmatch("%d+") do table.insert(found, id) end
+    if #found == 0 then notify("Importar", "No encontre ninguna ID.", 4) return end
+    IDS = found
+    saveIDS()
+    rebuild()
+    notify("Importado", #found .. " IDs guardadas.", 4)
 end)
 
-button("APLICAR A TODO EL MAPA", 6, Color3.fromRGB(55, 42, 92), function() paintAll() end)
-button("RESTAURAR MAPA", 7, Color3.fromRGB(30, 30, 36), function() restore() end)
-
-section("OPCIONES", 8)
-toggleRow("todas las caras (6)", 9, true, function(v) CFG.allFaces = v end)
-toggleRow("oscurecer mapa (mas contraste)", 10, false, function(v)
-    CFG.darken = v
-    paintAll()
+button("VOLVER A LA LISTA POR DEFECTO", 5, Color3.fromRGB(30, 30, 36), function()
+    IDS = {}
+    for _, id in ipairs(DEFAULT_IDS) do table.insert(IDS, id) end
+    saveIDS()
+    rebuild()
 end)
-toggleRow("excluir jugadores / armas", 11, true, function(v) CFG.skipChars = v end)
-toggleRow("auto-aplicar a partes nuevas", 12, true, function(v) CFG.autoNew = v end)
 
-sliderRow("Repeticion de textura", 1, 40, 8, 13, function(v)
+section("2. COLORES", 6)
+
+new("TextLabel", {
+    Size = UDim2.new(1, 0, 0, 14), BackgroundTransparency = 1, Font = Enum.Font.Code,
+    TextSize = 10, Text = "paredes y suelo", TextColor3 = MUTED,
+    TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = 7,
+}, Scroll)
+local wallRow = new("Frame", { Size = UDim2.new(1, 0, 0, 28), BackgroundTransparency = 1, LayoutOrder = 8 }, Scroll)
+new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 4) }, wallRow)
+for _, w in ipairs(WALL_COLORS) do
+    button(w.name, 1, w.color or Color3.fromRGB(60, 60, 70), function()
+        CFG.wallColor = w.color
+        notify("Color", "Paredes y suelo: " .. w.name, 2)
+        paintAll()
+    end, wallRow, UDim2.new(0, 72, 0, 28))
+end
+
+new("TextLabel", {
+    Size = UDim2.new(1, 0, 0, 14), BackgroundTransparency = 1, Font = Enum.Font.Code,
+    TextSize = 10, Text = "imagen", TextColor3 = MUTED,
+    TextXAlignment = Enum.TextXAlignment.Left, LayoutOrder = 9,
+}, Scroll)
+local texRow = new("Frame", { Size = UDim2.new(1, 0, 0, 28), BackgroundTransparency = 1, LayoutOrder = 10 }, Scroll)
+new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 4) }, texRow)
+for _, tc in ipairs(TEX_COLORS) do
+    button(tc.name, 1, tc.color, function()
+        CFG.texColor = tc.color
+        notify("Imagen", "Color: " .. tc.name, 2)
+        refresh()
+    end, texRow, UDim2.new(0, 72, 0, 28))
+end
+
+section("3. BRILLO", 11)
+toggleRow("modo brillo (mapa claro)", 12, false, function(v)
+    CFG.bright = v
+    if v then applyBright() else restoreBright() end
+end)
+sliderRow("intensidad del brillo", 1, 5, 3, 13, function(v)
+    CFG.brightLvl = v
+    applyBright()
+end)
+
+section("4. ESTAMPAR", 14)
+button("ESTAMPAR PAREDES + SUELO", 15, Color3.fromRGB(55, 42, 92), function() paintAll() end)
+button("RESTAURAR MAPA", 16, Color3.fromRGB(30, 30, 36), function() restore() end)
+
+section("5. AJUSTES", 17)
+sliderRow("Tamano de cada sello (studs)", 1, 30, 5, 18, function(v)
     CFG.tiling = v
-    refreshTiling()
+    refresh()
 end)
-sliderRow("Tamano minimo de parte", 0, 20, 1, 14, function(v) CFG.minSize = v end)
+toggleRow("posicion aleatoria", 19, true, function(v)
+    CFG.randomOff = v
+    refresh()
+end)
+toggleRow("incluir terreno / suelo", 20, true, function(v) CFG.terrain = v end)
+toggleRow("todas las caras (6)", 21, true, function(v) CFG.allFaces = v end)
+toggleRow("excluir jugadores / armas", 22, true, function(v) CFG.skipChars = v end)
+toggleRow("auto-aplicar a partes nuevas", 23, true, function(v) CFG.autoNew = v end)
+sliderRow("Tamano minimo de parte", 0, 20, 1, 24, function(v) CFG.minSize = v end)
 
-section("SONIDO", 15)
+section("SONIDO", 25)
 local SndBox = new("TextBox", {
     Size = UDim2.new(1, 0, 0, 28), BackgroundColor3 = Color3.fromRGB(22, 22, 26),
     BorderColor3 = Color3.fromRGB(60, 60, 66), Font = Enum.Font.Code, TextSize = 11,
     Text = "", PlaceholderText = "ID de sonido", PlaceholderColor3 = MUTED,
-    TextColor3 = TEXT, ClearTextOnFocus = false, LayoutOrder = 16,
+    TextColor3 = TEXT, ClearTextOnFocus = false, LayoutOrder = 26,
 }, Scroll)
-
-button("Reproducir", 17, Color3.fromRGB(40, 32, 62), function() playSound(SndBox.Text) end)
-button("Detener", 18, Color3.fromRGB(30, 30, 36), function() stopSound() end)
-toggleRow("loop", 19, false, function(v) CFG.loop = v if CFG.sound then CFG.sound.Looped = v end end)
-sliderRow("Volumen", 0, 3, 1, 20, function(v) CFG.volume = v if CFG.sound then CFG.sound.Volume = v end end)
-sliderRow("Tono", 0.2, 3, 1, 21, function(v) CFG.pitch = v if CFG.sound then CFG.sound.PlaybackSpeed = v end end)
-
-button("DIAGNOSTICO DEL MAPA", 22, Color3.fromRGB(30, 30, 36), function() diagnose() end)
+button("Reproducir", 27, Color3.fromRGB(40, 32, 62), function() playSound(SndBox.Text) end)
+button("Detener", 28, Color3.fromRGB(30, 30, 36), function() stopSound() end)
+toggleRow("loop", 29, false, function(v) CFG.loop = v if CFG.sound then CFG.sound.Looped = v end end)
+sliderRow("Volumen", 0, 3, 1, 30, function(v) CFG.volume = v if CFG.sound then CFG.sound.Volume = v end end)
 
 new("TextLabel", {
     Size = UDim2.new(1, 0, 0, 44), BackgroundTransparency = 1, Font = Enum.Font.Code,
-    TextSize = 10, TextWrapped = true, LayoutOrder = 23, TextColor3 = Color3.fromRGB(235, 180, 90),
+    TextSize = 10, TextWrapped = true, LayoutOrder = 31, TextColor3 = Color3.fromRGB(235, 180, 90),
     TextXAlignment = Enum.TextXAlignment.Left,
-    Text = "Toca un decal -> mira la preview -> APLICAR.\nSi la preview sale blanca, ese decal no sirve, prueba otro.",
+    Text = "Orden: toca imagen -> modo brillo ON -> ESTAMPAR.\nSi el suelo no cambia, apaga y prende 'incluir terreno'.",
 }, Scroll)
 
-button("UNLOAD SCRIPT", 24, Color3.fromRGB(60, 25, 25), function()
+button("UNLOAD SCRIPT", 32, Color3.fromRGB(60, 25, 25), function()
     if isUnloaded then return end
     isUnloaded = true
     for _, c in ipairs(Conn) do pcall(function() c:Disconnect() end) end
     restore()
+    restoreBright()
     stopSound()
     pcall(function() ScreenGui:Destroy() end)
 end)
@@ -520,6 +711,9 @@ track(WS.DescendantAdded:Connect(function(obj)
     end
 end))
 
-task.spawn(function()
-    notify("Script cargado", "Toca un decal de cruz y dale APLICAR.", 5)
-end)
+--=================================================================
+--  ARRANQUE
+--=================================================================
+loadIDS()
+rebuild()
+notify("v7 cargado", "Imagen + modo brillo + ESTAMPAR. " .. #IDS .. " IDs en lista.", 5)
