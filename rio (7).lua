@@ -244,183 +244,101 @@ pcall(function() LocalPlayer:WaitForChild("PlayerGui", 12) end)
 
 local Camera = workspace.CurrentCamera
 
--- ==================== Obsidian UI ====================
-local repo = "https://raw.githubusercontent.com/xyznick/UELinoriaLib/main/"
+-- ==================== Obsidian UI  →  RioUI (SOLO GUI · global a TODAS las pestañas) ====================
+-- Reemplaza la carga remota (UELinoria/Linoria/Obsidian) por una UI propia.
+-- El estilo vive en los constructores => TODAS las pestañas/submenús lo heredan.
+-- Ninguna función de gameplay se modifica.
+
 local Library, ThemeManager, SaveManager
 
-local function httpGet(url)
-    local ok, body = pcall(function()
-        return game:HttpGet(url)
-    end)
-    if ok and body and #body > 100 then return body end
-    return nil
+local RioUIS   = game:GetService("UserInputService")
+local RioRS    = game:GetService("RunService")
+local RioTS    = game:GetService("TweenService")
+local RioStats = game:GetService("Stats")
+local RioHttp  = game:GetService("HttpService")
+
+-- ---------- Paleta (referencia: negro / carbón / verde lima) ----------
+local C = {
+    bg      = Color3.fromRGB(9, 10, 9),
+    panel   = Color3.fromRGB(15, 16, 15),
+    panel2  = Color3.fromRGB(21, 22, 21),
+    item    = Color3.fromRGB(26, 28, 26),
+    hover   = Color3.fromRGB(35, 38, 35),
+    border  = Color3.fromRGB(42, 46, 42),
+    text    = Color3.fromRGB(230, 234, 230),
+    dim     = Color3.fromRGB(132, 140, 132),
+    accent  = Color3.fromRGB(150, 215, 60),
+    accentH = Color3.fromRGB(178, 242, 88),
+    dark    = Color3.fromRGB(6, 7, 6),
+}
+local FONT, FONTB = Enum.Font.Gotham, Enum.Font.GothamBold
+local HDR, ROW = 26, 26          -- alturas uniformes de cabecera y fila
+local GAP, PADCOL = 6, 8         -- espaciado uniforme
+
+-- ---------- Helpers ----------
+local function new(class, props, parent)
+    local o = Instance.new(class)
+    for k, v in pairs(props or {}) do o[k] = v end
+    o.Parent = parent
+    return o
 end
-
-local function try_load(url)
-    local body = httpGet(url)
-    if not body then return nil end
-    local ok, res = pcall(function() return loadstring(body)() end)
-    if ok and res then return res end
-    return nil
+local function corner(o, r) return new("UICorner", { CornerRadius = UDim.new(0, r or 4) }, o) end
+local function stroke(o, col, th, tr)
+    return new("UIStroke", { Color = col, Thickness = th or 1, Transparency = tr or 0,
+        ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, o)
 end
-
--- UELinoriaLib (misma UI que Aurora spoof) + fallbacks
-local UELINORIA_REPO = "https://raw.githubusercontent.com/xyznick/UELinoriaLib/main/"
-local LINORIA_REPO = "https://raw.githubusercontent.com/violin-suzutsuki/LinoriaLib/main/"
-local OBSIDIAN_REPO = "https://raw.githubusercontent.com/deividcomsono/Obsidian/main/"
-
-Library = try_load(UELINORIA_REPO .. "Library.lua")
-ThemeManager = try_load(UELINORIA_REPO .. "addons/ThemeManager.lua")
-SaveManager = try_load(UELINORIA_REPO .. "addons/SaveManager.lua")
-local _usingLinoria = Library ~= nil
-local _usingUE = Library ~= nil
-
-if not Library then
-    task.wait(0.25)
-    Library = try_load(LINORIA_REPO .. "Library.lua")
-    ThemeManager = try_load(LINORIA_REPO .. "addons/ThemeManager.lua")
-    SaveManager = try_load(LINORIA_REPO .. "addons/SaveManager.lua")
-    _usingLinoria = Library ~= nil
-    _usingUE = false
+local function pad(o, l, t, r, b)
+    return new("UIPadding", { PaddingLeft = UDim.new(0, l or 0), PaddingTop = UDim.new(0, t or 0),
+        PaddingRight = UDim.new(0, r or 0), PaddingBottom = UDim.new(0, b or 0) }, o)
 end
-if not Library then
-    task.wait(0.25)
-    Library = try_load(OBSIDIAN_REPO .. "Library.lua")
-    ThemeManager = try_load(OBSIDIAN_REPO .. "addons/ThemeManager.lua")
-    SaveManager = try_load(OBSIDIAN_REPO .. "addons/SaveManager.lua")
-    _usingLinoria = false
-    _usingUE = false
+local function vlist(o, gap)
+    return new("UIListLayout", { FillDirection = Enum.FillDirection.Vertical,
+        SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, gap or GAP) }, o)
 end
-
-if not Library or type(Library.CreateWindow) ~= "function" then
-    shakoFail("UI Library no cargó (UELinoria/Linoria/Obsidian)")
-    return
+local function txt(parent, str, size, col, bold)
+    return new("TextLabel", { BackgroundTransparency = 1, Text = str or "", TextSize = size or 13,
+        TextColor3 = col or C.text, Font = bold and FONTB or FONT,
+        TextXAlignment = Enum.TextXAlignment.Left, Size = UDim2.new(1, 0, 0, (size or 13) + 6) }, parent)
 end
-
--- Shim: Linoria no usa Callback en AddToggle/Slider/Dropdown como Obsidian
-do
-    local function wrapGroupbox(gb)
-        if not gb or gb.__shakoPatched then return gb end
-        gb.__shakoPatched = true
-        local function hook(method, valueKey)
-            local old = gb[method]
-            if type(old) ~= "function" then return end
-            gb[method] = function(self, idx, opts)
-                opts = opts or {}
-                local cb = opts.Callback
-                local ret = old(self, idx, opts)
-                if cb and _usingLinoria then
-                    task.defer(function()
-                        local Toggles = Library.Toggles or getgenv().Toggles
-                        local Options = Library.Options or getgenv().Options
-                        if method == "AddToggle" and Toggles and Toggles[idx] then
-                            pcall(function()
-                                Toggles[idx]:OnChanged(function()
-                                    pcall(cb, Toggles[idx].Value)
-                                end)
-                            end)
-                        elseif Options and Options[idx] then
-                            pcall(function()
-                                Options[idx]:OnChanged(function()
-                                    local v = Options[idx].Value
-                                    pcall(cb, v)
-                                end)
-                            end)
-                        end
-                    end)
-                end
-                return ret
-            end
-        end
-        hook("AddToggle")
-        hook("AddSlider")
-        hook("AddDropdown")
-        -- AddButton may differ
-        local oldBtn = gb.AddButton
-        if type(oldBtn) == "function" then
-            gb.AddButton = function(self, opts)
-                if type(opts) == "table" and opts.Func and not opts.Callback then
-                    -- Obsidian style {Text=, Func=}
-                    if _usingLinoria then
-                        return oldBtn(self, opts.Text or "Button", opts.Func)
-                    end
-                end
-                return oldBtn(self, opts)
-            end
-        end
-        return gb
+local function tween(o, props, t)
+    RioTS:Create(o, TweenInfo.new(t or 0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), props):Play()
+end
+local function Signal()
+    local h, s = {}, {}
+    function s:Connect(f)
+        h[#h + 1] = f
+        local c = {}
+        function c:Disconnect() for i, v in ipairs(h) do if v == f then table.remove(h, i) break end end end
+        return c
     end
-
-    local function wrapTab(tab)
-        if not tab or tab.__shakoPatched then return tab end
-        tab.__shakoPatched = true
-        for _, m in ipairs({ "AddLeftGroupbox", "AddRightGroupbox", "AddGroupbox" }) do
-            local old = tab[m]
-            if type(old) == "function" then
-                tab[m] = function(self, ...)
-                    local gb = old(self, ...)
-                    return wrapGroupbox(gb)
-                end
-            end
-        end
-        return tab
-    end
-
-    local oldCreate = Library.CreateWindow
-    Library.CreateWindow = function(self, opts)
-        opts = opts or {}
-        -- Linoria no siempre soporta Footer/Resizable/NotifySide
-        local ok, win = pcall(oldCreate, self, {
-            Title = opts.Title or "shako.win",
-            Center = opts.Center ~= false,
-            AutoShow = opts.AutoShow ~= false,
-            TabPadding = 8,
-        })
-        if not ok or not win then
-            return oldCreate(self, opts)
-        end
-        local oldAddTab = win.AddTab
-        if type(oldAddTab) == "function" then
-            win.AddTab = function(self, name, ...)
-                local tab = oldAddTab(self, name, ...)
-                return wrapTab(tab)
-            end
-        end
-        return win
-    end
-
-    -- Notify compatibility: Obsidian table vs Linoria string
-    local oldNotify = Library.Notify
-    if type(oldNotify) == "function" then
-        Library.Notify = function(self, a, b, c)
-            if type(a) == "table" then
-                local title = a.Title or a.title or "shako"
-                local desc = a.Description or a.description or a.Text or ""
-                local t = a.Time or a.time or 3
-                local msg = (desc ~= "" and (tostring(title) .. " · " .. tostring(desc))) or tostring(title)
-                return oldNotify(self, msg, t)
-            end
-            return oldNotify(self, a, b, c)
+    function s:Fire(...) for _, f in ipairs(h) do pcall(f, ...) end end
+    return s
+end
+local function valuesList(v)
+    local out = {}
+    if type(v) == "table" then
+        if #v > 0 then
+            for _, x in ipairs(v) do out[#out + 1] = tostring(x) end
+        else
+            for k in pairs(v) do out[#out + 1] = tostring(k) end
+            table.sort(out)
         end
     end
+    return out
 end
-getgenv()._ShakoUsingLinoria = _usingLinoria
+-- Acepta firma Linoria (idx, opts) y Obsidian (opts)
+local function norm(idx, o)
+    if type(idx) == "table" and o == nil then o = idx; idx = nil end
+    if type(o) ~= "table" then o = {} end
+    if idx == nil then idx = o.Flag or o.Id or o.Text or ("opt_" .. tostring(math.random(1, 1e6))) end
+    return tostring(idx), o
+end
 
-task.defer(function()
-    task.wait(0.3)
-    pcall(function()
-        local k = (getgenv().config and getgenv().config.MenuKey) or "RightShift"
-        Library.ToggleKeybind = tostring(k) -- string = modo toggle nativo de UELinoria
-        getgenv()._ShakoMenuKey = tostring(k)
-    end)
-end)
-
-
-pcall(function() Library.ShowCustomCursor = true end)
-
+-- ---------- Iconos (Lucide, ya se usaban en el script) ----------
 local LucideIcons = {}
 pcall(function()
-    LucideIcons = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/Icons/refs/heads/main/lucide/dist/Icons.lua"))() or {}
+    LucideIcons = loadstring(game:HttpGet(
+        "https://raw.githubusercontent.com/Footagesus/Icons/refs/heads/main/lucide/dist/Icons.lua"))() or {}
 end)
 local function Icon(n)
     local f = LucideIcons[string.lower(tostring(n or ""))]
@@ -430,35 +348,732 @@ local function Icon(n)
     end
     return nil
 end
+local ICON_CYCLE = { "crosshair", "zap", "swords", "shield", "eye", "move",
+                     "settings", "palette", "activity", "box", "user", "sun",
+                     "target", "cpu", "layers", "gauge" }
 
-if ThemeManager and ThemeManager.SetLibrary then
-    pcall(function()
-        ThemeManager:SetLibrary(Library)
-        ThemeManager:SetFolder("shako_win")
-    end)
+-- ---------- ScreenGui raíz ----------
+local function guiParent()
+    local p
+    pcall(function() p = gethui and gethui() end)
+    if not p then pcall(function() p = game:GetService("CoreGui") end) end
+    if not p then p = LocalPlayer:WaitForChild("PlayerGui") end
+    return p
 end
-if SaveManager and SaveManager.SetLibrary then
-    pcall(function()
-        SaveManager:SetLibrary(Library)
-        SaveManager:SetFolder("shako_win/configs")
-        if ThemeManager and SaveManager.IgnoreThemeSettings then
-            pcall(function() SaveManager:IgnoreThemeSettings() end)
+local ScreenGui = new("ScreenGui", { Name = "RioUI", ResetOnSpawn = false, IgnoreGuiInset = true,
+    DisplayOrder = 9999, ZIndexBehavior = Enum.ZIndexBehavior.Sibling }, guiParent())
+
+-- ---------- Arrastre / límites ----------
+local function clampToViewport(frame)
+    local cam = workspace.CurrentCamera
+    if not cam then return end
+    local vp, p, s = cam.ViewportSize, frame.AbsolutePosition, frame.AbsoluteSize
+    frame.Position = UDim2.fromOffset(
+        math.clamp(p.X, 0, math.max(0, vp.X - s.X)),
+        math.clamp(p.Y, 0, math.max(0, vp.Y - s.Y)))
+end
+local function draggable(frame, handle)
+    handle = handle or frame
+    local dragging, startPos, startInput
+    handle.InputBegan:Connect(function(i)
+        if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+            dragging, startInput, startPos = true, i.Position, frame.Position
         end
-        pcall(function() SaveManager:SetIgnoreIndexes({"MenuKeybind"}) end)
+    end)
+    RioUIS.InputChanged:Connect(function(i)
+        if not dragging then return end
+        if i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch then
+            local d = i.Position - startInput
+            frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + d.X,
+                                       startPos.Y.Scale, startPos.Y.Offset + d.Y)
+            clampToViewport(frame)
+        end
+    end)
+    RioUIS.InputEnded:Connect(function(i)
+        if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
+            dragging = false; clampToViewport(frame)
+        end
     end)
 end
+
+-- ---------- Popups (dropdown / color picker) ----------
+local function popup(anchor, build)
+    local catcher = new("TextButton", { BackgroundTransparency = 1, Text = "", Size = UDim2.fromScale(1, 1),
+        ZIndex = 60 }, ScreenGui)
+    local box = new("Frame", { BackgroundColor3 = C.panel2, BorderSizePixel = 0, ZIndex = 61,
+        AutomaticSize = Enum.AutomaticSize.Y, Size = UDim2.new(0, anchor.AbsoluteSize.X, 0, 0),
+        Position = UDim2.fromOffset(anchor.AbsolutePosition.X,
+            anchor.AbsolutePosition.Y + anchor.AbsoluteSize.Y + 4) }, ScreenGui)
+    corner(box, 6); stroke(box, C.border, 1); pad(box, 4, 4, 4, 4); vlist(box, 3)
+    local function close() catcher:Destroy(); box:Destroy() end
+    catcher.MouseButton1Click:Connect(close)
+    build(box, close)
+    return close
+end
+
+-- ==========================================================================
+-- Library
+-- ==========================================================================
+Library = {
+    Options = {}, Toggles = {}, Flags = {},
+    Font = FONT, FontSize = 13,
+    ShowCustomCursor = true,
+    ToggleKeybind = "RightShift",
+    Watermark = { Text = "" },
+    Unloaded = false,
+    ScreenGui = ScreenGui,
+    _unload = {},
+}
+
+local function registerOption(idx, default, apply)
+    local opt = { Value = default, __apply = apply or function() end }
+    local sig = Signal()
+    opt.__sig = sig
+    function opt:OnChanged(f) return sig:Connect(f) end
+    function opt:SetValue(v, silent)
+        self.Value = v; self.__apply(v)
+        if not silent then sig:Fire(v) end
+    end
+    opt.Set = opt.SetValue
+    function opt:Get() return self.Value end
+    if idx then Library.Options[idx] = opt end
+    return opt
+end
+
+local function row(parent, h)
+    return new("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, h or ROW) }, parent)
+end
+local function rowHover(r)
+    r.ClipsDescendants = false
+    r.MouseEnter:Connect(function() tween(r, { BackgroundColor3 = C.hover }, 0.15) end)
+    r.MouseLeave:Connect(function() tween(r, { BackgroundColor3 = C.item }, 0.15) end)
+end
+
+-- ---------- Controles (idéntico estilo en TODAS las pestañas) ----------
+local function addToggle(gb, idx, o)
+    idx, o = norm(idx, o)
+    local r = row(gb.content, ROW)
+    local box = new("Frame", { Size = UDim2.fromOffset(15, 15), Position = UDim2.new(0, 0, 0.5, -7),
+        BackgroundColor3 = C.item, BorderSizePixel = 0 }, r)
+    corner(box, 3); stroke(box, C.border, 1)
+    local tick = new("TextLabel", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1),
+        Text = "✓", TextSize = 12, Font = FONTB, TextColor3 = C.bg, Visible = false }, box)
+    local lbl = txt(r, o.Text or idx, 13, C.text)
+    lbl.Position = UDim2.new(0, 23, 0, 0); lbl.Size = UDim2.new(1, -23, 1, 0)
+    local function render(v)
+        tween(box, { BackgroundColor3 = v and C.accent or C.item })
+        tick.Visible = v == true
+    end
+    local opt = registerOption(idx, o.Default == true, render)
+    render(opt.Value)
+    r.InputBegan:Connect(function(i)
+        if i.UserInputType == Enum.UserInputType.MouseButton1 then opt:SetValue(not opt.Value) end
+    end)
+    r.MouseEnter:Connect(function() tween(lbl, { TextColor3 = C.accentH }) end)
+    r.MouseLeave:Connect(function() tween(lbl, { TextColor3 = C.text }) end)
+    if o.Callback then opt:OnChanged(function(v) pcall(o.Callback, v) end) end
+    Library.Toggles[idx] = opt
+    return opt
+end
+
+local function addSlider(gb, idx, o)
+    idx, o = norm(idx, o)
+    local min, max = o.Min or 0, o.Max or 100
+    local rnd, suf = o.Rounding or 0, o.Suffix or ""
+    local r = row(gb.content, 40)
+    local lbl = txt(r, o.Text or idx, 13, C.text); lbl.Size = UDim2.new(1, -70, 0, 18)
+    local val = new("TextLabel", { BackgroundTransparency = 1, Size = UDim2.fromOffset(66, 18),
+        Position = UDim2.new(1, -66, 0, 0), TextSize = 12, Font = FONTB, TextColor3 = C.accent,
+        TextXAlignment = Enum.TextXAlignment.Right, Text = "" }, r)
+    local track = new("Frame", { Size = UDim2.new(1, 0, 0, 5), Position = UDim2.new(0, 0, 0, 27),
+        BackgroundColor3 = C.item, BorderSizePixel = 0 }, r)
+    corner(track, 3); stroke(track, C.border, 1)
+    local fill = new("Frame", { Size = UDim2.new(0, 0, 1, 0), BackgroundColor3 = C.accent, BorderSizePixel = 0 }, track)
+    corner(fill, 3)
+    local function fmt(v)
+        local s = rnd > 0 and string.format("%." .. rnd .. "f", v) or tostring(math.floor(v + 0.5))
+        return s .. suf
+    end
+    local function render(v)
+        local a = tonumber(v) or min
+        local pct = max > min and math.clamp((a - min) / (max - min), 0, 1) or 0
+        fill.Size = UDim2.new(pct, 0, 1, 0); val.Text = fmt(a)
+    end
+    local opt = registerOption(idx, tonumber(o.Default) or min, render)
+    render(opt.Value)
+    local dragging = false
+    local function fromX(x)
+        local rel = math.clamp((x - track.AbsolutePosition.X) / math.max(track.AbsoluteSize.X, 1), 0, 1)
+        local v = min + (max - min) * rel
+        return rnd > 0 and tonumber(string.format("%." .. rnd .. "f", v)) or math.floor(v + 0.5)
+    end
+    track.InputBegan:Connect(function(i)
+        if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = true; opt:SetValue(fromX(i.Position.X)) end
+    end)
+    RioUIS.InputChanged:Connect(function(i)
+        if dragging and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then
+            opt:SetValue(fromX(i.Position.X))
+        end
+    end)
+    RioUIS.InputEnded:Connect(function(i)
+        if i.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
+    end)
+    if o.Callback then opt:OnChanged(function(v) pcall(o.Callback, v) end) end
+    return opt
+end
+
+local function addDropdown(gb, idx, o)
+    idx, o = norm(idx, o)
+    local multi = o.Multi == true
+    local r = row(gb.content, o.Text and 44 or 26)
+    if o.Text then txt(r, o.Text, 13, C.text).Size = UDim2.new(1, 0, 0, 16) end
+    local btn = new("TextButton", { BackgroundColor3 = C.item, BorderSizePixel = 0, AutoButtonColor = false,
+        Text = "", Size = UDim2.new(1, 0, 0, 24), Position = UDim2.new(0, 0, 0, o.Text and 20 or 1) }, r)
+    corner(btn, 4); stroke(btn, C.border, 1)
+    local shown = new("TextLabel", { BackgroundTransparency = 1, TextSize = 12, Font = FONT, TextColor3 = C.text,
+        TextXAlignment = Enum.TextXAlignment.Left, Size = UDim2.new(1, -26, 1, 0), Position = UDim2.new(0, 8, 0, 0),
+        TextTruncate = Enum.TextTruncate.AtEnd, Text = "" }, btn)
+    new("TextLabel", { BackgroundTransparency = 1, Text = "▾", TextSize = 12, Font = FONT, TextColor3 = C.dim,
+        Size = UDim2.fromOffset(18, 24), Position = UDim2.new(1, -20, 0, 0) }, btn)
+    local default = multi and (type(o.Default) == "table" and o.Default or {}) or tostring(o.Default or "None")
+    local function label(v)
+        if multi then
+            local t = {}
+            for k in pairs(v) do t[#t + 1] = tostring(k) end
+            table.sort(t)
+            return #t > 0 and table.concat(t, ", ") or "None"
+        end
+        return tostring(v)
+    end
+    local opt = registerOption(idx, default, function(v) shown.Text = label(v) end)
+    shown.Text = label(opt.Value)
+    btn.MouseEnter:Connect(function() tween(btn, { BackgroundColor3 = C.hover }) end)
+    btn.MouseLeave:Connect(function() tween(btn, { BackgroundColor3 = C.item }) end)
+    btn.MouseButton1Click:Connect(function()
+        popup(btn, function(box, close)
+            local list = valuesList(o.Values)
+            local sf = new("ScrollingFrame", { BackgroundTransparency = 1, BorderSizePixel = 0,
+                Size = UDim2.new(1, 0, 0, math.min(180, math.max(28, #list * 22 + 6))),
+                AutomaticCanvasSize = Enum.AutomaticSize.Y, CanvasSize = UDim2.new(),
+                ScrollingDirection = Enum.ScrollingDirection.Y, ScrollBarThickness = 4,
+                ScrollBarImageColor3 = C.border }, box)
+            vlist(sf, 2)
+            for _, name in ipairs(list) do
+                local it = new("TextButton", { BackgroundColor3 = C.item, BorderSizePixel = 0, Text = "",
+                    Size = UDim2.new(1, -4, 0, 20), AutoButtonColor = false }, sf)
+                corner(it, 3)
+                local t = new("TextLabel", { BackgroundTransparency = 1, Text = name, TextSize = 12, Font = FONT,
+                    TextColor3 = C.text, TextXAlignment = Enum.TextXAlignment.Left, Size = UDim2.new(1, -8, 1, 0),
+                    Position = UDim2.new(0, 8, 0, 0) }, it)
+                local function mark()
+                    if multi then
+                        tween(t, { TextColor3 = opt.Value[name] and C.accentH or C.text })
+                    else
+                        tween(t, { TextColor3 = opt.Value == name and C.accentH or C.text })
+                    end
+                end
+                mark()
+                it.MouseEnter:Connect(function() tween(it, { BackgroundColor3 = C.hover }) end)
+                it.MouseLeave:Connect(function() tween(it, { BackgroundColor3 = C.item }) end)
+                it.MouseButton1Click:Connect(function()
+                    if multi then
+                        local nv = {}
+                        for k, v in pairs(opt.Value) do nv[k] = v end
+                        nv[name] = (not nv[name]) and true or nil
+                        opt:SetValue(nv); mark()
+                    else
+                        opt:SetValue(name); close()
+                    end
+                end)
+            end
+        end)
+    end)
+    function opt:SetValues(list) o.Values = list end
+    if o.Callback then opt:OnChanged(function(v) pcall(o.Callback, v) end) end
+    return opt
+end
+
+local function addButton(gb, idx, o)
+    if type(o) == "function" then o = { Text = tostring(idx), Func = o }; idx = nil end
+    if type(idx) == "table" then o = idx; idx = nil end
+    o = type(o) == "table" and o or { Text = tostring(o or idx or "Button") }
+    local r = row(gb.content, ROW)
+    local b = new("TextButton", { BackgroundColor3 = C.item, BorderSizePixel = 0, Text = "",
+        Size = UDim2.new(1, 0, 1, 0), AutoButtonColor = false }, r)
+    corner(b, 4); stroke(b, C.border, 1)
+    local t = new("TextLabel", { BackgroundTransparency = 1, Text = o.Text or idx or "Button", TextSize = 13,
+        Font = FONTB, TextColor3 = C.text, Size = UDim2.fromScale(1, 1) }, b)
+    b.MouseEnter:Connect(function() tween(b, { BackgroundColor3 = C.hover }); tween(t, { TextColor3 = C.accentH }) end)
+    b.MouseLeave:Connect(function() tween(b, { BackgroundColor3 = C.item }); tween(t, { TextColor3 = C.text }) end)
+    b.MouseButton1Click:Connect(function() pcall(o.Func or o.Callback or function() end) end)
+    return registerOption(idx, true, function() end)
+end
+
+local function addLabel(gb, text)
+    local l = txt(gb.content, tostring(text or ""), 12, C.dim)
+    l.AutomaticSize = Enum.AutomaticSize.Y
+    l.TextWrapped = true
+    l.Size = UDim2.new(1, 0, 0, 0)
+    return l
+end
+
+local function addDivider(gb)
+    return new("Frame", { BackgroundColor3 = C.border, BorderSizePixel = 0, Size = UDim2.new(1, 0, 0, 1) }, gb.content)
+end
+
+local function addColorPicker(gb, idx, o)
+    idx, o = norm(idx, o)
+    local r = row(gb.content, ROW)
+    local lbl = txt(r, o.Text or idx, 13, C.text); lbl.Size = UDim2.new(1, -40, 1, 0)
+    local sw = new("TextButton", { BackgroundColor3 = o.Default or Color3.new(1, 1, 1), BorderSizePixel = 0,
+        Text = "", Size = UDim2.fromOffset(30, 16), Position = UDim2.new(1, -30, 0.5, -8), AutoButtonColor = false }, r)
+    corner(sw, 3); stroke(sw, C.border, 1)
+    local opt = registerOption(idx, o.Default or Color3.new(1, 1, 1), function(v)
+        if typeof(v) == "Color3" then sw.BackgroundColor3 = v end
+    end)
+    sw.MouseButton1Click:Connect(function()
+        popup(sw, function(box, close)
+            box.Size = UDim2.fromOffset(200, 0)
+            local prev = new("Frame", { Size = UDim2.new(1, 0, 0, 26), BackgroundColor3 = opt.Value, BorderSizePixel = 0 }, box)
+            corner(prev, 4); stroke(prev, C.border, 1)
+            local ch = { opt.Value.R, opt.Value.G, opt.Value.B }
+            local function push()
+                local col = Color3.new(ch[1], ch[2], ch[3])
+                opt:SetValue(col); prev.BackgroundColor3 = col
+            end
+            for i, name in ipairs({ "R", "G", "B" }) do
+                local rw = row(box, 22)
+                txt(rw, name, 12, C.dim).Size = UDim2.fromOffset(16, 22)
+                local tr = new("Frame", { Size = UDim2.new(1, -24, 0, 5), Position = UDim2.new(0, 20, 0.5, -3),
+                    BackgroundColor3 = C.item, BorderSizePixel = 0 }, rw)
+                corner(tr, 3); stroke(tr, C.border, 1)
+                local fl = new("Frame", { Size = UDim2.new(ch[i], 0, 1, 0), BackgroundColor3 = C.accent, BorderSizePixel = 0 }, tr)
+                corner(fl, 3)
+                local drag = false
+                local function set(x)
+                    local rel = math.clamp((x - tr.AbsolutePosition.X) / math.max(tr.AbsoluteSize.X, 1), 0, 1)
+                    ch[i] = rel; fl.Size = UDim2.new(rel, 0, 1, 0); push()
+                end
+                tr.InputBegan:Connect(function(inp)
+                    if inp.UserInputType == Enum.UserInputType.MouseButton1 then drag = true; set(inp.Position.X) end
+                end)
+                RioUIS.InputChanged:Connect(function(inp)
+                    if drag and inp.UserInputType == Enum.UserInputType.MouseMovement then set(inp.Position.X) end
+                end)
+                RioUIS.InputEnded:Connect(function(inp)
+                    if inp.UserInputType == Enum.UserInputType.MouseButton1 then drag = false end
+                end)
+            end
+            local ok = new("TextButton", { Size = UDim2.new(1, 0, 0, 22), BackgroundColor3 = C.item,
+                Text = "OK", TextSize = 12, Font = FONTB, TextColor3 = C.text, BorderSizePixel = 0,
+                AutoButtonColor = false }, box)
+            corner(ok, 4); stroke(ok, C.border, 1)
+            ok.MouseButton1Click:Connect(close)
+        end)
+    end)
+    function opt:SetValueRGB(c) self:SetValue(c) end
+    if o.Callback then opt:OnChanged(function(v) pcall(o.Callback, v) end) end
+    return opt
+end
+
+local function addKeybind(gb, idx, o)
+    idx, o = norm(idx, o)
+    local r = row(gb.content, ROW)
+    txt(r, o.Text or idx, 13, C.text).Size = UDim2.new(1, -80, 1, 0)
+    local b = new("TextButton", { BackgroundColor3 = C.item, BorderSizePixel = 0, Text = "",
+        Size = UDim2.fromOffset(74, 22), Position = UDim2.new(1, -74, 0.5, -11), AutoButtonColor = false }, r)
+    corner(b, 4); stroke(b, C.border, 1)
+    local t = new("TextLabel", { BackgroundTransparency = 1, TextSize = 12, Font = FONTB, TextColor3 = C.accent,
+        Size = UDim2.fromScale(1, 1), Text = "" }, b)
+    local opt = registerOption(idx, o.Default or "None", function(v)
+        t.Text = tostring(v):gsub("Enum.KeyCode.", "")
+    end)
+    opt.Mode = o.Mode or "Toggle"
+    t.Text = tostring(opt.Value)
+    local waiting = false
+    b.MouseButton1Click:Connect(function()
+        waiting = true; t.Text = "..."; tween(t, { TextColor3 = C.dim })
+        local conn
+        conn = RioUIS.InputBegan:Connect(function(i)
+            if not waiting then return end
+            if i.UserInputType == Enum.UserInputType.Keyboard then opt:SetValue(i.KeyCode.Name)
+            elseif i.UserInputType == Enum.UserInputType.MouseButton2 then opt:SetValue("MB2")
+            elseif i.UserInputType == Enum.UserInputType.MouseButton1 then opt:SetValue("MB1") end
+            waiting = false; tween(t, { TextColor3 = C.accent }); conn:Disconnect()
+        end)
+    end)
+    if o.Callback then opt:OnChanged(function(v) pcall(o.Callback, v) end) end
+    return opt
+end
+
+local function addTextbox(gb, idx, o)
+    idx, o = norm(idx, o)
+    local r = row(gb.content, o.Text and 42 or 24)
+    if o.Text then txt(r, o.Text, 13, C.text).Size = UDim2.new(1, 0, 0, 16) end
+    local tb = new("TextBox", { BackgroundColor3 = C.item, BorderSizePixel = 0, Text = o.Default or "",
+        PlaceholderText = o.Placeholder or "", TextSize = 12, Font = FONT, TextColor3 = C.text,
+        TextXAlignment = Enum.TextXAlignment.Left, ClearTextOnFocus = false,
+        Size = UDim2.new(1, 0, 0, 22), Position = UDim2.new(0, 0, 0, o.Text and 18 or 1) }, r)
+    corner(tb, 4); stroke(tb, C.border, 1); pad(tb, 6, 0, 6, 0)
+    local opt = registerOption(idx, o.Default or "", function(v) if not tb:IsFocused() then tb.Text = v end end)
+    tb.FocusLost:Connect(function() opt:SetValue(tb.Text) end)
+    if o.Callback then opt:OnChanged(function(v) pcall(o.Callback, v) end) end
+    return opt
+end
+
+-- ==========================================================================
+-- Ventana + barra inferior
+-- ==========================================================================
+local MINW, MINH = 800, 460
+
+function Library:CreateWindow(opts)
+    opts = opts or {}
+    local W = { Tabs = {}, _buttons = {}, _name = opts.Title or "RioRage.win" }
+
+    local cam = workspace.CurrentCamera
+    local vp = cam and cam.ViewportSize or Vector2.new(1280, 720)
+
+    local win = new("Frame", { Name = "Window", BackgroundColor3 = C.bg, BorderSizePixel = 0,
+        Size = UDim2.fromOffset(940, 580),
+        Position = UDim2.fromOffset(math.max(0, (vp.X - 940) / 2), math.max(0, (vp.Y - 580) / 2)) }, ScreenGui)
+    corner(win, 8); stroke(win, C.border, 1)
+    W.Frame = win
+
+    -- Topbar
+    local top = new("Frame", { BackgroundColor3 = C.panel, BorderSizePixel = 0, Size = UDim2.new(1, 0, 0, 30) }, win)
+    corner(top, 8)
+    new("Frame", { BackgroundColor3 = C.accent, BorderSizePixel = 0, Size = UDim2.new(1, 0, 0, 1),
+        Position = UDim2.new(0, 0, 1, -1) }, top)
+    local title = txt(top, W._name, 14, C.accent, true)
+    title.Position = UDim2.fromOffset(12, 0); title.Size = UDim2.new(1, -250, 1, 0)
+    if opts.Footer then
+        local f = txt(top, tostring(opts.Footer), 11, C.dim)
+        f.Position = UDim2.new(0, 12 + (#W._name * 8) + 10, 0, 0); f.Size = UDim2.fromOffset(120, 30)
+    end
+    local wm = txt(top, "", 11, C.dim)
+    wm.Position = UDim2.new(1, -240, 0, 0); wm.Size = UDim2.fromOffset(180, 30)
+    wm.TextXAlignment = Enum.TextXAlignment.Right
+    W.Watermark = wm
+    local function topBtn(sym, x)
+        local b = new("TextButton", { BackgroundColor3 = C.panel2, BorderSizePixel = 0, Text = sym,
+            TextSize = 13, Font = FONTB, TextColor3 = C.dim, AutoButtonColor = false,
+            Size = UDim2.fromOffset(22, 22), Position = UDim2.new(1, x, 0.5, -11) }, top)
+        corner(b, 4); stroke(b, C.border, 1)
+        b.MouseEnter:Connect(function() tween(b, { BackgroundColor3 = C.hover }); tween(b, { TextColor3 = C.accentH }) end)
+        b.MouseLeave:Connect(function() tween(b, { BackgroundColor3 = C.panel2 }); tween(b, { TextColor3 = C.dim }) end)
+        return b
+    end
+    topBtn("×", -30).MouseButton1Click:Connect(function() win.Visible = false end)
+    topBtn("–", -56).MouseButton1Click:Connect(function() win.Visible = false end)
+    draggable(win, top)
+
+    -- Body
+    local body = new("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 1, -30),
+        Position = UDim2.fromOffset(0, 30) }, win)
+
+    -- Sidebar con scroll (soporta muchas pestañas)
+    local side = new("ScrollingFrame", { Name = "Sidebar", BackgroundColor3 = C.panel, BorderSizePixel = 0,
+        Size = UDim2.new(0, 58, 1, 0), AutomaticCanvasSize = Enum.AutomaticSize.Y, CanvasSize = UDim2.new(),
+        ScrollingDirection = Enum.ScrollingDirection.Y, ScrollBarThickness = 3,
+        ScrollBarImageColor3 = C.border }, body)
+    corner(side, 6); pad(side, 0, 8, 4, 8); vlist(side, 6)
+
+    local holder = new("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, -58, 1, 0),
+        Position = UDim2.fromOffset(58, 0) }, body)
+
+    local tooltip = new("TextLabel", { BackgroundColor3 = C.panel2, TextSize = 11, Font = FONT,
+        TextColor3 = C.text, BorderSizePixel = 0, Visible = false, ZIndex = 70,
+        Size = UDim2.fromOffset(0, 20) }, ScreenGui)
+    corner(tooltip, 4); stroke(tooltip, C.border, 1)
+
+    -- Grip de redimensionado
+    local grip = new("TextButton", { BackgroundTransparency = 1, Text = "", AutoButtonColor = false,
+        Size = UDim2.fromOffset(16, 16), Position = UDim2.new(1, -16, 1, -16) }, win)
+    do
+        local rz, sSize, sIn
+        grip.InputBegan:Connect(function(i)
+            if i.UserInputType == Enum.UserInputType.MouseButton1 then rz, sIn, sSize = true, i.Position, win.AbsoluteSize end
+        end)
+        RioUIS.InputChanged:Connect(function(i)
+            if not rz then return end
+            if i.UserInputType == Enum.UserInputType.MouseMovement then
+                local d = i.Position - sIn
+                win.Size = UDim2.fromOffset(math.max(MINW, sSize.X + d.X), math.max(MINH, sSize.Y + d.Y))
+                clampToViewport(win)
+            end
+        end)
+        RioUIS.InputEnded:Connect(function(i)
+            if i.UserInputType == Enum.UserInputType.MouseButton1 then rz = false end
+        end)
+    end
+
+    -- Normalizador global: recorre TODAS las páginas
+    function Library:Polish()
+        for _, t in ipairs((self.Window and self.Window.Tabs) or {}) do
+            local page = t.Page
+            if page and page.Left and page.Right then
+                local function countGroups(col)
+                    local n = 0
+                    for _, c in ipairs(col:GetChildren()) do
+                        if c:IsA("Frame") and c.Name == "Groupbox" then n = n + 1 end
+                    end
+                    return n
+                end
+                local lc, rc = countGroups(page.Left), countGroups(page.Right)
+                if lc == 0 and rc > 0 then
+                    page.Right.Position = UDim2.new(0, 0, 0, 0); page.Right.Size = UDim2.new(1, 0, 1, 0)
+                elseif rc == 0 and lc > 0 then
+                    page.Left.Position = UDim2.new(0, 0, 0, 0); page.Left.Size = UDim2.new(1, 0, 1, 0)
+                else
+                    page.Left.Position = UDim2.new(0, 0, 0, 0);   page.Left.Size = UDim2.new(0.5, 0, 1, 0)
+                    page.Right.Position = UDim2.new(0.5, 0, 0, 0); page.Right.Size = UDim2.new(0.5, 0, 1, 0)
+                end
+                for _, col in ipairs({ page.Left, page.Right }) do
+                    col.AutomaticCanvasSize = Enum.AutomaticSize.Y
+                    col.CanvasSize = UDim2.new()
+                    col.ScrollBarThickness = 4
+                    col.ScrollBarImageColor3 = C.border
+                end
+            end
+        end
+    end
+
+    function W:SelectTab(name)
+        for i, t in ipairs(W.Tabs) do
+            local sel = (t.Name == name)
+            t.Page.Visible = sel
+            tween(W._buttons[i], { BackgroundColor3 = sel and C.panel2 or C.panel })
+            tween(W._buttons[i].Icon, { ImageColor3 = sel and C.accent or C.dim })
+            W._buttons[i].Sel.Visible = sel
+        end
+    end
+
+    function W:AddTab(name, icon)
+        local t = { Name = name }
+        local btn = new("TextButton", { BackgroundColor3 = C.panel, BorderSizePixel = 0, Text = "",
+            Size = UDim2.new(1, 0, 0, 44), AutoButtonColor = false }, side)
+        corner(btn, 6)
+        local sel = new("Frame", { BackgroundColor3 = C.accent, BorderSizePixel = 0,
+            Size = UDim2.fromOffset(2, 20), Position = UDim2.new(0, -1, 0.5, -10), Visible = false }, btn)
+        corner(sel, 2)
+        local id = Icon(icon or ICON_CYCLE[#W.Tabs + 1] or "settings")
+        local img = new("ImageLabel", { BackgroundTransparency = 1, ImageColor3 = C.dim,
+            Size = UDim2.fromOffset(22, 22), Position = UDim2.new(0.5, -11, 0.5, -11),
+            Image = id and ("rbxassetid://" .. id) or "" }, btn)
+        btn.Icon = img; btn.Sel = sel
+        btn.MouseEnter:Connect(function()
+            tween(btn, { BackgroundColor3 = C.hover })
+            tooltip.Text = "  " .. tostring(name) .. "  "
+            tooltip.Size = UDim2.fromOffset(#tostring(name) * 7 + 16, 20)
+            tooltip.Position = UDim2.fromOffset(side.AbsolutePosition.X + 60, btn.AbsolutePosition.Y + 12)
+            tooltip.Visible = true
+        end)
+        btn.MouseLeave:Connect(function() tween(btn, { BackgroundColor3 = C.panel }); tooltip.Visible = false end)
+        btn.MouseButton1Click:Connect(function() W:SelectTab(name) end)
+
+        local page = new("Frame", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), Visible = false }, holder)
+        local function column(x)
+            local s = new("ScrollingFrame", { BackgroundTransparency = 1, BorderSizePixel = 0,
+                ScrollBarThickness = 4, ScrollBarImageColor3 = C.border,
+                ScrollingDirection = Enum.ScrollingDirection.Y,
+                AutomaticCanvasSize = Enum.AutomaticSize.Y, CanvasSize = UDim2.new(),
+                Position = UDim2.new(x, 0, 0, 0), Size = UDim2.new(0.5, 0, 1, 0) }, page)
+            pad(s, PADCOL, PADCOL, PADCOL, PADCOL); vlist(s, PADCOL)
+            return s
+        end
+        page.Left  = column(0)
+        page.Right = column(0.5)
+
+        local function groupbox(parent, gname)
+            local gb = new("Frame", { Name = "Groupbox", BackgroundColor3 = C.panel, BorderSizePixel = 0,
+                Size = UDim2.new(1, 0, 0, HDR), AutomaticSize = Enum.AutomaticSize.Y }, parent)
+            corner(gb, 6); stroke(gb, C.border, 1); vlist(gb, 0)
+            local head = new("Frame", { BackgroundColor3 = C.panel2, BorderSizePixel = 0,
+                Size = UDim2.new(1, 0, 0, HDR) }, gb)
+            corner(head, 6)
+            new("Frame", { BackgroundColor3 = C.accent, BorderSizePixel = 0,
+                Size = UDim2.new(0, 2, 1, 0) }, head)
+            local ht = txt(head, tostring(gname), 13, C.accent, true)
+            ht.Position = UDim2.fromOffset(12, 0); ht.Size = UDim2.new(1, -38, 1, 0)
+            local chev = new("TextButton", { BackgroundTransparency = 1, Text = "▾", TextSize = 13, Font = FONTB,
+                TextColor3 = C.dim, Size = UDim2.fromOffset(22, HDR), Position = UDim2.new(1, -26, 0, 0),
+                AutoButtonColor = false }, head)
+            local content = new("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 0),
+                AutomaticSize = Enum.AutomaticSize.Y }, gb)
+            pad(content, 10, 8, 10, 10); vlist(content, GAP)
+            gb.content = content
+            local open = true
+            head.InputBegan:Connect(function(i)
+                if i.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
+                open = not open
+                content.Visible = open
+                chev.Text = open and "▾" or "▸"
+                if open then gb.AutomaticSize = Enum.AutomaticSize.Y
+                else gb.AutomaticSize = Enum.AutomaticSize.None; gb.Size = UDim2.new(1, 0, 0, HDR) end
+            end)
+            return gb
+        end
+
+        function t:AddLeftGroupbox(n)  return groupbox(page.Left, n) end
+        function t:AddRightGroupbox(n) return groupbox(page.Right, n) end
+        function t:AddGroupbox(n)      return groupbox(page.Left, n) end
+
+        W.Tabs[#W.Tabs + 1] = t
+        W._buttons[#W._buttons + 1] = btn
+        t.Page = page
+        if #W.Tabs == 1 then W:SelectTab(name) end
+        task.defer(function() pcall(function() Library:Polish() end) end)
+        return t
+    end
+
+    function W:Toggle(v) win.Visible = (v == nil) and (not win.Visible) or v end
+    W.SetVisible = W:Toggle
+
+    -- ---------- Barra inferior de estadísticas (independiente, arrastrable) ----------
+    local bar = new("Frame", { Name = "StatsBar", BackgroundColor3 = C.bg, BorderSizePixel = 0,
+        Size = UDim2.fromOffset(380, 28),
+        Position = UDim2.fromOffset(math.max(0, (vp.X - 380) / 2), math.max(0, vp.Y - 44)) }, ScreenGui)
+    corner(bar, 6); stroke(bar, C.border, 1)
+    new("Frame", { BackgroundColor3 = C.accent, BorderSizePixel = 0, Size = UDim2.new(0, 2, 1, 0) }, bar)
+    local bt = new("TextLabel", { BackgroundTransparency = 1, TextSize = 12, Font = FONTB, TextColor3 = C.accent,
+        Size = UDim2.new(1, -16, 1, 0), Position = UDim2.fromOffset(8, 0), Text = "" }, bar)
+    bt.TextXAlignment = Enum.TextXAlignment.Center
+    draggable(bar, bar)
+    W.StatsBar = bar
+
+    local profile = (LocalPlayer.DisplayName ~= "" and LocalPlayer.DisplayName) or LocalPlayer.Name
+    local function getPing()
+        local ok, v = pcall(function() return RioStats.Network.ServerStatsItem["Data Ping"]:GetValue() end)
+        if ok and type(v) == "number" and v > 0 then return math.floor(v + 0.5) end
+        local sp = workspace:FindFirstChild("ServerPing")
+        if sp and type(sp.Value) == "number" then return math.floor(sp.Value + 0.5) end
+        return nil
+    end
+    local frames, t0, fps = 0, os.clock(), 0
+    RioRS.RenderStepped:Connect(function()
+        frames = frames + 1
+        local now = os.clock()
+        if now - t0 >= 0.5 then fps = math.floor(frames / (now - t0) + 0.5); frames, t0 = 0, now end
+    end)
+    task.spawn(function()
+        while true do
+            local ping = getPing()
+            bt.Text = string.format("%s  |  %s  |  %d fps  |  %s ms  |  %s",
+                W._name, profile, fps, ping and tostring(ping) or "N/A", os.date("%H:%M:%S"))
+            task.wait(0.25)
+        end
+    end)
+
+    -- Hotkey de apertura
+    RioUIS.InputBegan:Connect(function(i, gpe)
+        if gpe or RioUIS:GetFocusedTextBox() then return end
+        local kb = Library.ToggleKeybind
+        if type(kb) ~= "string" or kb == "" then return end
+        local ok, code = pcall(function() return Enum.KeyCode[kb] end)
+        if ok and code and i.KeyCode == code then win.Visible = not win.Visible end
+    end)
+
+    Library.Window = W
+    return W
+end
+
+-- ==========================================================================
+-- API misc
+-- ==========================================================================
+function Library:SetWatermark(text)
+    self.Watermark.Text = tostring(text or "")
+    if self.Window and self.Window.Watermark then self.Window.Watermark.Text = self.Watermark.Text end
+end
+function Library:SetFontSize(n) self.FontSize = tonumber(n) or 13 end
+function Library:SetTheme() end
+function Library:OnUnload(fn) table.insert(self._unload, fn) end
+
+function Library:Notify(data)
+    if type(data) ~= "table" then data = { Title = tostring(data) } end
+    local vp = workspace.CurrentCamera.ViewportSize
+    local f = new("Frame", { BackgroundColor3 = C.panel2, BorderSizePixel = 0, Size = UDim2.fromOffset(230, 46),
+        Position = UDim2.fromOffset(vp.X - 246, 16), ZIndex = 80 }, ScreenGui)
+    corner(f, 6); stroke(f, C.border, 1)
+    new("Frame", { BackgroundColor3 = C.accent, BorderSizePixel = 0, Size = UDim2.new(0, 2, 1, 0) }, f)
+    txt(f, tostring(data.Title or "RioUI"), 13, C.accent, true).Position = UDim2.fromOffset(10, 6)
+    local d = txt(f, tostring(data.Description or data.Text or ""), 11, C.dim)
+    d.Position = UDim2.fromOffset(10, 24); d.Size = UDim2.new(1, -16, 0, 16)
+    task.delay(tonumber(data.Time) or 3, function()
+        if f then tween(f, { BackgroundTransparency = 1 }); task.wait(0.2); f:Destroy() end
+    end)
+end
+
+-- Stubs (evitan errores y dan Config real sin tocar lógica)
+ThemeManager = {
+    SetLibrary = function() end, SetFolder = function() end,
+    SetTheme = function() end, GetThemes = function() return {} end, ApplyTheme = function() end,
+}
+SaveManager = {
+    Folder = "shako_win/configs", Ignore = {},
+    SetLibrary = function() end,
+    SetFolder = function(self, f) self.Folder = f; pcall(function() if not isfolder(f) then makefolder(f) end end) end,
+    IgnoreThemeSettings = function() end, SetIgnoreIndexes = function() end,
+}
+do
+    local function dump()
+        local out = {}
+        for idx, o in pairs(Library.Options) do
+            local v = o.Value
+            if typeof(v) == "Color3" then out[idx] = { __c = true, r = v.R, g = v.G, b = v.B }
+            elseif type(v) == "table" or type(v) == "string" or type(v) == "number" or type(v) == "boolean" then
+                out[idx] = v
+            end
+        end
+        return out
+    end
+    local function load(t)
+        for idx, v in pairs(t) do
+            local o = Library.Options[idx]
+            if o then
+                if type(v) == "table" and v.__c then o:SetValue(Color3.new(v.r, v.g, v.b))
+                else o:SetValue(v) end
+            end
+        end
+    end
+    function SaveManager:SaveConfiguration(name)
+        pcall(function()
+            if not isfolder(self.Folder) then makefolder(self.Folder) end
+            writefile(self.Folder .. "/" .. tostring(name) .. ".json", RioHttp:JSONEncode(dump()))
+        end)
+    end
+    function SaveManager:LoadConfiguration(name)
+        pcall(function()
+            load(RioHttp:JSONDecode(readfile(self.Folder .. "/" .. tostring(name) .. ".json")))
+        end)
+    end
+    function SaveManager:BuildConfigSection(tab)
+        if not tab then return end
+        local gb = tab:AddLeftGroupbox("Config")
+        local box = gb:AddTextbox("ConfigName", { Text = "Nombre", Default = "default", Placeholder = "nombre" })
+        gb:AddButton({ Text = "Guardar", Func = function() SaveManager:SaveConfiguration(box.Value) end })
+        gb:AddButton({ Text = "Cargar", Func = function() SaveManager:LoadConfiguration(box.Value) end })
+    end
+end
+
+getgenv()._ShakoUsingLinoria = false
+
+task.defer(function()
+    task.wait(0.3)
+    pcall(function()
+        local k = (getgenv().config and getgenv().config.MenuKey) or "RightShift"
+        Library.ToggleKeybind = tostring(k)
+        getgenv()._ShakoMenuKey = tostring(k)
+    end)
+end)
+
+pcall(function() Library.ShowCustomCursor = true end)
 
 local Window
 do
     local ok, win = pcall(function()
-        -- ventana mas ancha + fuente limpia (no Code)
         pcall(function()
-            Library.Font = Enum.Font.Gotham
-            if Library.SetFontSize then
-                Library:SetFontSize(13)
-            else
-                Library.FontSize = 13
-            end
+            Library.Font = FONT
+            Library:SetFontSize(13)
         end)
         return Library:CreateWindow({
             Title = "RioRage.win",
@@ -476,32 +1091,28 @@ do
     end
     Window = win
 
--- Cursor UI visible al abrir
-pcall(function()
-    Library.ShowCustomCursor = true
-    UserInputService.MouseBehavior = Enum.MouseBehavior.Default
-    UserInputService.MouseIconEnabled = true
-end)
+    pcall(function()
+        Library.ShowCustomCursor = true
+        UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+        UserInputService.MouseIconEnabled = true
+    end)
 end
 
--- Forzar label Rivals (no Marketplace)
 pcall(function()
-    if Library.SetWatermark then
-        Library:SetWatermark("shako.win")
-    end
-    if Library.Watermark then
-        pcall(function() Library.Watermark.Text = "shako.win · Rivals" end)
-    end
+    Library:SetWatermark("shako.win")
+    Library.Watermark.Text = "shako.win · Rivals"
+    if Window and Window.Watermark then Window.Watermark.Text = Library.Watermark.Text end
 end)
 
--- silenciar notificaciones de la UI (menos Config)
+-- Pases de normalización (cubren TODAS las pestañas creadas más abajo)
+task.delay(0.8, function() pcall(function() Library:Polish() end) end)
+task.delay(2.0, function() pcall(function() Library:Polish() end) end)
+
+-- silenciar notificaciones de la UI (menos Config) — igual que antes
 pcall(function()
     if Library and Library.Notify then
         getgenv()._ShakoLibraryNotify = Library.Notify
-        Library.Notify = function(self, data)
-            -- bloquear spam de toggles; configs usan Notify() → StarterGui
-            return
-        end
+        Library.Notify = function(self, data) return end
     end
 end)
 
@@ -509,9 +1120,7 @@ function Notify(title, text)
     if tostring(title) ~= "Config" then return end
     pcall(function()
         game:GetService("StarterGui"):SetCore("SendNotification", {
-            Title = "Config",
-            Text = tostring(text or ""),
-            Duration = 3,
+            Title = "Config", Text = tostring(text or ""), Duration = 3,
         })
     end)
     pcall(function()
