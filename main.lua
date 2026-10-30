@@ -1,7 +1,9 @@
 -- Maqueta VISUAL para Roblox Studio (LocalScript).
 -- No ejecuta funciones de juego ni automatiza acciones.
 local Players = game:GetService("Players")
-local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
+local UserInputService = game:GetService("UserInputService")
+local localPlayer = Players.LocalPlayer
+local playerGui = localPlayer:WaitForChild("PlayerGui")
 local MAGENTA = Color3.fromRGB(198, 0, 210)
 local BG = Color3.fromRGB(9, 9, 10)
 local PANEL = Color3.fromRGB(10, 10, 11)
@@ -12,7 +14,15 @@ local gui = Instance.new("ScreenGui")
 gui.Name = "LuaInterfaceMockup"
 gui.IgnoreGuiInset = true
 gui.ResetOnSpawn = false
-gui.Parent = playerGui
+-- Use gethui when the executor exposes it; otherwise use the normal PlayerGui.
+local guiParent = playerGui
+if type(gethui) == "function" then
+ local ok, hiddenGui = pcall(gethui)
+ if ok and hiddenGui then guiParent = hiddenGui end
+end
+local oldGui = guiParent:FindFirstChild(gui.Name)
+if oldGui then oldGui:Destroy() end
+gui.Parent = guiParent
 local root = Instance.new("Frame")
 root.Name = "Window"
 root.Size = UDim2.fromOffset(657, 553)
@@ -93,3 +103,10 @@ button(root,"Rage",417,221,157,19,function() end)
 text(root,"⌄",558,222,12,16,10,false,false); text(root,"[-]",600,219,25,14,9,false,false)
 local actions={"Load config","Save config","Reset config","Import from clipboard","Export to clipboard","Reset menu layout","Lua script manager","Unload"}
 for i,name in ipairs(actions) do button(root,name,417,246+(i-1)*33,157,24,function() end) end
+
+-- The [INS] label in the reference is represented by a visual show/hide toggle.
+UserInputService.InputBegan:Connect(function(input, processed)
+ if not processed and input.KeyCode == Enum.KeyCode.Insert then
+  root.Visible = not root.Visible
+ end
+end)
