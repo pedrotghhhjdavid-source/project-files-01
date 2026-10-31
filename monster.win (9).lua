@@ -917,15 +917,26 @@ do
             end
         end)
 
+        -- Tamaño fijo telefono: 340 x 400
+        local winW, winH = 340, 400
+
         local root = Instance.new("Frame")
         root.Name = "Window"
-        root.Size = UDim2.fromOffset(657, 553)
-        root.Position = UDim2.new(0.5, -328, 0.5, -276)
+        root.Size = UDim2.fromOffset(winW, winH)
+        root.Position = UDim2.new(0.5, -math.floor(winW/2), 0.5, -math.floor(winH/2))
         root.BackgroundColor3 = BG
         root.BorderColor3 = Color3.fromRGB(90, 90, 92)
         root.BorderSizePixel = 1
         root.Active = true
         root.Parent = gui
+
+        local sideW = math.floor(math.clamp(winW * 0.14, 48, 64))
+        local pad = 4
+        local contentX = sideW + 6
+        local contentW = winW - contentX - 6
+        local leftW = math.floor(contentW * 0.48)
+        local rightW = contentW - leftW - 8
+        local topH = 4
 
         local function mkFrame(parent, name, x, y, w, h, color, border)
             local f = Instance.new("Frame")
@@ -939,22 +950,23 @@ do
             return f
         end
 
-        -- Top accent + sidebar (layout exacto main.lua)
-        mkFrame(root, "TopAccent", 0, 0, 657, 2, Color3.fromRGB(65, 130, 138), Color3.fromRGB(65, 130, 138))
-        mkFrame(root, "Sidebar", 2, 5, 75, 545, Color3.fromRGB(12, 12, 13), Color3.fromRGB(48, 48, 50))
-        mkFrame(root, "Divider", 360, 26, 10, 504, BG, Color3.fromRGB(35, 35, 37))
+        -- Top accent + sidebar (proporcional a la ventana)
+        mkFrame(root, "TopAccent", 0, 0, winW, 2, Color3.fromRGB(65, 130, 138), Color3.fromRGB(65, 130, 138))
+        mkFrame(root, "Sidebar", 2, 4, sideW, winH - 8, Color3.fromRGB(12, 12, 13), Color3.fromRGB(48, 48, 50))
+        local divX = contentX + leftW + 2
+        mkFrame(root, "Divider", divX, 8, 4, winH - 16, BG, Color3.fromRGB(35, 35, 37))
 
-        -- Paneles de fondo (look original)
-        local miscPane = mkFrame(root, "MiscPane", 98, 26, 258, 504, PANEL, EDGE)
-        local settingsPane = mkFrame(root, "SettingsPane", 375, 26, 256, 154, PANEL, EDGE)
-        local otherPane = mkFrame(root, "OtherPane", 375, 201, 256, 329, PANEL, EDGE)
+        -- Paneles de fondo
+        mkFrame(root, "MiscPane", contentX, 8, leftW, winH - 16, PANEL, EDGE)
+        local rightX = divX + 6
+        mkFrame(root, "SettingsPane", rightX, 8, rightW, math.floor((winH - 20) * 0.32), PANEL, EDGE)
+        mkFrame(root, "OtherPane", rightX, 12 + math.floor((winH - 20) * 0.32), rightW, math.floor((winH - 20) * 0.64), PANEL, EDGE)
 
-        -- Host de contenido real (encima de los paneles, sin tapar el look)
         local contentHost = Instance.new("Frame")
         contentHost.Name = "ContentHost"
         contentHost.BackgroundTransparency = 1
-        contentHost.Position = UDim2.fromOffset(98, 26)
-        contentHost.Size = UDim2.fromOffset(533, 504)
+        contentHost.Position = UDim2.fromOffset(contentX, 8)
+        contentHost.Size = UDim2.fromOffset(contentW, winH - 16)
         contentHost.Parent = root
 
         -- Drag por barra superior
@@ -985,22 +997,21 @@ do
         local tabOrder = {}
         local currentTab = nil
         local navIcons = { "●", "◉", "⊕", "☼", "⚙", "⌁", "●" }
-        local navY = { 52, 127, 201, 276, 350, 438, 500 }
-
-        -- Sidebar icon buttons (posiciones exactas main.lua)
         local sideButtons = {}
+        local navCount = #navIcons
+        local navTop = 12
+        local navBottom = winH - 12
+        local navStep = (navBottom - navTop) / navCount
         for i, icon in ipairs(navIcons) do
-            if i == 5 or i == 6 then
-                mkFrame(root, "NavTile", 4, navY[i] - 34, 72, 70, BG, EDGE)
-            end
+            local cy = math.floor(navTop + (i - 0.5) * navStep)
             local btn = Instance.new("TextButton")
             btn.Name = "Nav" .. i
-            btn.Position = UDim2.fromOffset(15, navY[i] - 17)
-            btn.Size = UDim2.fromOffset(48, 36)
+            btn.Position = UDim2.fromOffset(2, cy - 16)
+            btn.Size = UDim2.fromOffset(sideW - 2, 32)
             btn.BackgroundTransparency = 1
             btn.Text = icon
             btn.Font = Enum.Font.GothamSemibold
-            btn.TextSize = 27
+            btn.TextSize = (sideW >= 58) and 22 or 18
             btn.TextColor3 = Color3.fromRGB(113, 113, 116)
             btn.AutoButtonColor = false
             btn.Parent = root
@@ -1023,8 +1034,8 @@ do
             leftCol.Name = "Left"
             leftCol.BackgroundTransparency = 1
             leftCol.BorderSizePixel = 0
-            leftCol.Position = UDim2.fromOffset(4, 4)
-            leftCol.Size = UDim2.fromOffset(250, 496)
+            leftCol.Position = UDim2.fromOffset(2, 2)
+            leftCol.Size = UDim2.fromOffset(leftW - 4, winH - 20)
             leftCol.ScrollBarThickness = 2
             leftCol.ScrollBarImageColor3 = MAGENTA
             leftCol.CanvasSize = UDim2.new(0, 0, 0, 0)
@@ -1036,15 +1047,15 @@ do
             leftHolder.AutomaticSize = Enum.AutomaticSize.Y
             leftHolder.Parent = leftCol
             local leftLay = Instance.new("UIListLayout")
-            leftLay.Padding = UDim.new(0, 6)
+            leftLay.Padding = UDim.new(0, 4)
             leftLay.Parent = leftHolder
 
             local rightCol = Instance.new("ScrollingFrame")
             rightCol.Name = "Right"
             rightCol.BackgroundTransparency = 1
             rightCol.BorderSizePixel = 0
-            rightCol.Position = UDim2.fromOffset(281, 4)
-            rightCol.Size = UDim2.fromOffset(248, 496)
+            rightCol.Position = UDim2.fromOffset(leftW + 8, 2)
+            rightCol.Size = UDim2.fromOffset(rightW - 4, winH - 20)
             rightCol.ScrollBarThickness = 2
             rightCol.ScrollBarImageColor3 = MAGENTA
             rightCol.CanvasSize = UDim2.new(0, 0, 0, 0)
@@ -1056,7 +1067,7 @@ do
             rightHolder.AutomaticSize = Enum.AutomaticSize.Y
             rightHolder.Parent = rightCol
             local rightLay = Instance.new("UIListLayout")
-            rightLay.Padding = UDim.new(0, 6)
+            rightLay.Padding = UDim.new(0, 4)
             rightLay.Parent = rightHolder
 
             local tab = {
