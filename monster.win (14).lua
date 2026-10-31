@@ -260,8 +260,8 @@ do
 
     local ACCENT = Color3.fromRGB(198, 0, 210)
     local ACCENT_DIM = Color3.fromRGB(140, 0, 150)
-    local BG = Color3.fromRGB(9, 9, 10)
-    local PANEL = Color3.fromRGB(10, 10, 11)
+    local BG = Color3.fromRGB(16, 16, 16)
+    local PANEL = Color3.fromRGB(16, 16, 16)
     local PANEL2 = Color3.fromRGB(18, 18, 20)
     local OUTLINE = Color3.fromRGB(58, 58, 60)
     local TEXT = Color3.fromRGB(207, 207, 210)
@@ -365,7 +365,7 @@ do
 
         local check = Instance.new("Frame")
         check.Size = UDim2.fromScale(1, 1)
-        check.BackgroundColor3 = Color3.fromRGB(192, 0, 206)
+        check.BackgroundColor3 = Color3.fromRGB(198, 0, 210)
         check.BorderSizePixel = 0
         check.Visible = opts.Default == true
         check.ZIndex = 3
@@ -376,9 +376,9 @@ do
         lbl.Position = UDim2.fromOffset(14, 0)
         lbl.Size = UDim2.new(1, -16, 1, 0)
         lbl.Font = Enum.Font.Gotham
-        lbl.TextSize = 11
+        lbl.TextSize = 10
         lbl.TextXAlignment = Enum.TextXAlignment.Left
-        lbl.TextColor3 = TEXT
+        lbl.TextColor3 = Color3.fromRGB(197, 197, 197)
         lbl.Text = tostring(opts.Text or idx)
         lbl.ZIndex = 2
         lbl.Parent = row
@@ -459,34 +459,34 @@ do
 
         local row = Instance.new("Frame")
         row.BackgroundTransparency = 1
-        row.Size = UDim2.new(1, 0, 0, 38)
+        row.Size = UDim2.new(1, 0, 0, 28)
         row.Active = true
         row.Parent = gb._content
 
         local lbl = Instance.new("TextLabel")
         lbl.BackgroundTransparency = 1
-        lbl.Size = UDim2.new(1, -50, 0, 14)
+        lbl.Size = UDim2.new(1, -52, 0, 12)
         lbl.Font = Enum.Font.Gotham
-        lbl.TextSize = 12
+        lbl.TextSize = 10
         lbl.TextXAlignment = Enum.TextXAlignment.Left
-        lbl.TextColor3 = TEXT
+        lbl.TextColor3 = Color3.fromRGB(197, 197, 197)
         lbl.Text = tostring(opts.Text or idx)
         lbl.Parent = row
 
         local valL = Instance.new("TextLabel")
         valL.BackgroundTransparency = 1
-        valL.Size = UDim2.fromOffset(48, 14)
+        valL.Size = UDim2.fromOffset(48, 12)
         valL.Position = UDim2.new(1, -48, 0, 0)
-        valL.Font = Enum.Font.Code
-        valL.TextSize = 11
-        valL.TextColor3 = ACCENT
+        valL.Font = Enum.Font.Gotham
+        valL.TextSize = 10
+        valL.TextColor3 = Color3.fromRGB(208, 208, 208)
         valL.TextXAlignment = Enum.TextXAlignment.Right
         valL.Text = tostring(value)
         valL.Parent = row
 
         local track = Instance.new("TextButton")
-        track.Size = UDim2.new(1, -4, 0, 6)
-        track.Position = UDim2.fromOffset(0, 18)
+        track.Size = UDim2.new(1, -4, 0, 4)
+        track.Position = UDim2.fromOffset(0, 16)
         track.BackgroundColor3 = Color3.fromRGB(37, 37, 37)
         track.BorderColor3 = Color3.fromRGB(64, 64, 64)
         track.BorderSizePixel = 1
@@ -499,7 +499,6 @@ do
         fill.BackgroundColor3 = ACCENT
         fill.BorderSizePixel = 0
         fill.Parent = track
-        corner(fill, 4)
 
         local opt = { Value = value, Type = "Slider", Callback = opts.Callback }
         makeOnChanged(opt)
@@ -586,20 +585,19 @@ do
         lbl.Parent = row
 
         local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(1, 0, 0, 22)
-        btn.Position = UDim2.fromOffset(0, 16)
-        btn.BackgroundColor3 = PANEL2
-        btn.BorderSizePixel = 0
+        btn.Size = UDim2.new(1, 0, 0, 18)
+        btn.Position = UDim2.fromOffset(0, 14)
+        btn.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
+        btn.BorderColor3 = Color3.fromRGB(57, 57, 57)
+        btn.BorderSizePixel = 1
         btn.Font = Enum.Font.Gotham
-        btn.TextSize = 12
-        btn.TextColor3 = TEXT
+        btn.TextSize = 10
+        btn.TextColor3 = Color3.fromRGB(200, 200, 200)
         btn.TextXAlignment = Enum.TextXAlignment.Left
         btn.Text = "  " .. tostring(value)
         btn.AutoButtonColor = false
         btn.ZIndex = 6
         btn.Parent = row
-        corner(btn, 4)
-        stroke(btn, OUTLINE, 1, 0.25)
 
         local opt = { Value = value, Type = "Dropdown", Values = values, Callback = opts.Callback }
         makeOnChanged(opt)
@@ -706,26 +704,21 @@ do
         local text = opts.Text or "Button"
         local func = opts.Func or opts.Callback
         local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(1, 0, 0, 26)
-        btn.BackgroundColor3 = PANEL2
-        btn.BorderSizePixel = 0
-        btn.Font = Enum.Font.GothamMedium
-        btn.TextSize = 12
-        btn.TextColor3 = TEXT
+        btn.Size = UDim2.new(1, 0, 0, 22)
+        btn.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
+        btn.BorderColor3 = Color3.fromRGB(57, 57, 57)
+        btn.BorderSizePixel = 1
+        btn.Font = Enum.Font.GothamBold
+        btn.TextSize = 10
+        btn.TextColor3 = Color3.fromRGB(200, 200, 200)
         btn.Text = text
         btn.AutoButtonColor = false
         btn.Parent = gb._content
-        corner(btn, 4)
-        local btnStroke = stroke(btn, OUTLINE, 1, 0.3)
         btn.MouseEnter:Connect(function()
-            btn.BackgroundColor3 = Color3.fromRGB(28, 34, 28)
-            btnStroke.Color = ACCENT
-            btnStroke.Transparency = 0.25
+            btn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
         end)
         btn.MouseLeave:Connect(function()
-            btn.BackgroundColor3 = PANEL2
-            btnStroke.Color = OUTLINE
-            btnStroke.Transparency = 0.3
+            btn.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
         end)
         btn.MouseButton1Click:Connect(function()
             if getgenv()._PrototypoUIDebug then
@@ -783,12 +776,12 @@ do
         local gb = { _content = nil }
         local header = Instance.new("TextLabel")
         header.BackgroundTransparency = 1
-        header.Size = UDim2.new(1, -20, 0, 22)
-        header.Position = UDim2.fromOffset(10, 4)
-        header.Font = Enum.Font.GothamMedium
-        header.TextSize = 13
+        header.Size = UDim2.new(1, -12, 0, 14)
+        header.Position = UDim2.fromOffset(6, 2)
+        header.Font = Enum.Font.GothamBold
+        header.TextSize = 10
         header.TextXAlignment = Enum.TextXAlignment.Left
-        header.TextColor3 = TEXT
+        header.TextColor3 = Color3.fromRGB(209, 209, 209)
         header.Text = tostring(title or "")
         header.Parent = frame
 
@@ -797,8 +790,8 @@ do
         local content = Instance.new("Frame")
         content.Name = "Content"
         content.BackgroundTransparency = 1
-        content.Position = UDim2.fromOffset(8, 28)
-        content.Size = UDim2.new(1, -16, 0, 0)
+        content.Position = UDim2.fromOffset(6, 18)
+        content.Size = UDim2.new(1, -12, 0, 0)
         content.AutomaticSize = Enum.AutomaticSize.Y
         content.Parent = frame
         local lay = Instance.new("UIListLayout")
@@ -888,7 +881,7 @@ do
     function Library:CreateWindow(opts)
         opts = opts or {}
         -- GameSense / menu.html dimensions & colors
-        local HOT = Color3.fromRGB(192, 0, 206)
+        local HOT = Color3.fromRGB(198, 0, 210)
         local BG = Color3.fromRGB(16, 16, 16)
         local PANEL = Color3.fromRGB(17, 17, 17)
         local LINE = Color3.fromRGB(53, 53, 53)
@@ -947,16 +940,6 @@ do
         })
         tg.Parent = topline
 
-        -- scanline overlay (subtle)
-        local scan = Instance.new("Frame")
-        scan.Size = UDim2.fromScale(1, 1)
-        scan.BackgroundTransparency = 0.96
-        scan.BackgroundColor3 = Color3.fromRGB(85, 85, 85)
-        scan.BorderSizePixel = 0
-        scan.ZIndex = 4
-        scan.Active = false
-        scan.Parent = root
-
         local sideW = 77
         if winW < 500 then sideW = 52 end
 
@@ -967,14 +950,6 @@ do
         sidebar.BorderColor3 = Color3.fromRGB(68, 68, 68)
         sidebar.BorderSizePixel = 1
         sidebar.Parent = root
-        local sideGrad = Instance.new("UIGradient")
-        sideGrad.Rotation = 0
-        sideGrad.Color = ColorSequence.new({
-            ColorSequenceKeypoint.new(0, Color3.fromRGB(23, 23, 23)),
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(16, 16, 16)),
-        })
-        sideGrad.Parent = sidebar
-
         -- Iconos estilo referencia (rage, world, crosshair, visuals, gear, knife, player)
         local navKinds = { "rage", "world", "cross", "sun", "gear", "knife", "user" }
         local sideButtons = {}
@@ -1164,7 +1139,7 @@ do
             leftFS.Position = UDim2.fromOffset(12, 4)
             leftFS.Size = UDim2.fromOffset(leftW, winH - 28)
             leftFS.BackgroundColor3 = Color3.fromRGB(16, 16, 16)
-            leftFS.BorderColor3 = Color3.fromRGB(60, 60, 60)
+            leftFS.BorderColor3 = Color3.fromRGB(50, 50, 50)
             leftFS.BorderSizePixel = 1
             leftFS.Parent = page
 
@@ -1196,18 +1171,18 @@ do
             leftHolder.Size = UDim2.new(1, -4, 0, 0)
             leftHolder.AutomaticSize = Enum.AutomaticSize.Y
             leftHolder.Parent = leftCol
-            Instance.new("UIListLayout", leftHolder).Padding = UDim.new(0, 4)
+            Instance.new("UIListLayout", leftHolder).Padding = UDim.new(0, 2)
 
             -- right column stack: Settings + Other
             local rightX = leftW + 20
-            local rightTopH = math.floor((winH - 40) * 0.32)
+            local rightTopH = math.floor(math.clamp(winH * 0.28, 140, 170))
 
             local setFS = Instance.new("Frame")
             setFS.Name = "SettingsField"
             setFS.Position = UDim2.fromOffset(rightX, 4)
             setFS.Size = UDim2.fromOffset(rightW, rightTopH)
             setFS.BackgroundColor3 = Color3.fromRGB(16, 16, 16)
-            setFS.BorderColor3 = Color3.fromRGB(60, 60, 60)
+            setFS.BorderColor3 = Color3.fromRGB(50, 50, 50)
             setFS.BorderSizePixel = 1
             setFS.Parent = page
 
@@ -1238,14 +1213,14 @@ do
             rightTopHolder.Size = UDim2.new(1, -4, 0, 0)
             rightTopHolder.AutomaticSize = Enum.AutomaticSize.Y
             rightTopHolder.Parent = rightTopScroll
-            Instance.new("UIListLayout", rightTopHolder).Padding = UDim.new(0, 3)
+            Instance.new("UIListLayout", rightTopHolder).Padding = UDim.new(0, 2)
 
             local othFS = Instance.new("Frame")
             othFS.Name = "OtherField"
             othFS.Position = UDim2.fromOffset(rightX, rightTopH + 12)
             othFS.Size = UDim2.fromOffset(rightW, winH - rightTopH - 40)
             othFS.BackgroundColor3 = Color3.fromRGB(16, 16, 16)
-            othFS.BorderColor3 = Color3.fromRGB(60, 60, 60)
+            othFS.BorderColor3 = Color3.fromRGB(50, 50, 50)
             othFS.BorderSizePixel = 1
             othFS.Parent = page
 
@@ -1276,7 +1251,7 @@ do
             rightBotHolder.Size = UDim2.new(1, -4, 0, 0)
             rightBotHolder.AutomaticSize = Enum.AutomaticSize.Y
             rightBotHolder.Parent = rightBotScroll
-            Instance.new("UIListLayout", rightBotHolder).Padding = UDim.new(0, 3)
+            Instance.new("UIListLayout", rightBotHolder).Padding = UDim.new(0, 2)
 
             -- Map groupboxes: left = left, first right boxes go top, rest bottom
             -- For compatibility: AddLeftGroupbox -> left, AddRightGroupbox alternates top/bottom
@@ -1291,11 +1266,10 @@ do
 
             local function makeGB(parent, titleText)
                 local f = Instance.new("Frame")
-                f.Size = UDim2.new(1, 0, 0, 40)
+                f.Size = UDim2.new(1, 0, 0, 24)
                 f.AutomaticSize = Enum.AutomaticSize.Y
-                f.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
-                f.BorderColor3 = Color3.fromRGB(50, 50, 50)
-                f.BorderSizePixel = 1
+                f.BackgroundTransparency = 1
+                f.BorderSizePixel = 0
                 f.Parent = parent
                 local inner = wrapGroupbox(f, titleText)
                 return inner
