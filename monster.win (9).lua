@@ -918,7 +918,7 @@ do
         end)
 
         -- Tamaño fijo telefono: 340 x 400
-        local winW, winH = 340, 400
+        local winW, winH = 480, 320
 
         local root = Instance.new("Frame")
         root.Name = "Window"
