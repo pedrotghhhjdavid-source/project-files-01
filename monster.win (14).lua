@@ -283,7 +283,7 @@ local globalConnections = {}
 
 local function make(className, props, parent)
 	local object = Instance.new(className)
-	for key, value in pairs(props) do (object :: any)[key] = value end
+	for key, value in pairs(props) do object[key] = value end
 	if parent then object.Parent = parent end
 	return object
 end
@@ -292,11 +292,11 @@ local function round(object, pixels)
 	make("UICorner", { CornerRadius = UDim.new(0, pixels) }, object)
 end
 
-local function outline(object, color?)
+local function outline(object, color)
 	make("UIStroke", { Color = color or Theme.Border, Thickness = 1, Transparency = 0.16 }, object)
 end
 
-local function text(parent, value, size, color, font: Enum.Font?, props?)
+local function text(parent, value, size, color, font, props)
 	local options = props or {}
 	options.BackgroundTransparency = 1
 	options.BorderSizePixel = 0
@@ -306,16 +306,16 @@ local function text(parent, value, size, color, font: Enum.Font?, props?)
 	options.Font = font or Enum.Font.Gotham
 	options.TextXAlignment = options.TextXAlignment or Enum.TextXAlignment.Left
 	options.TextYAlignment = options.TextYAlignment or Enum.TextYAlignment.Center
-	return make("TextLabel", options, parent) :
+	return make("TextLabel", options, parent)
 end
 
-local function baseButton(parent, value, size: UDim2, color?)
+local function baseButton(parent, value, size, color)
 	local normal = color or Theme.Raised
 	local control = make("TextButton", {
 		AutoButtonColor = false, BackgroundColor3 = normal, BorderSizePixel = 0,
 		Size = size, Text = value, TextColor3 = Theme.Text, TextSize = 12,
 		Font = Enum.Font.GothamMedium,
-	}, parent) :
+	}, parent)
 	round(control, 7)
 	control.MouseEnter:Connect(function() TweenService:Create(control, TweenInfo.new(0.13), { BackgroundColor3 = Theme.Hover }):Play() end)
 	control.MouseLeave:Connect(function() TweenService:Create(control, TweenInfo.new(0.13), { BackgroundColor3 = normal }):Play() end)
@@ -325,17 +325,17 @@ end
 local gui = make("ScreenGui", {
 	Name = "GameSenseStyleUI", ResetOnSpawn = false,
 	IgnoreGuiInset = true, ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
-}, playerGui) :
+}, playerGui)
 
 local window = make("Frame", {
 	Name = "Window", AnchorPoint = Vector2.new(0.5, 0.5),
 	Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(900, 590),
 	BackgroundColor3 = Theme.Background, BorderSizePixel = 0, ClipsDescendants = true,
-}, gui) :
+}, gui)
 round(window, 12)
 outline(window)
 
-local uiScale = make("UIScale", { Scale = 1 }, window) :
+local uiScale = make("UIScale", { Scale = 1 }, window)
 local function fitViewport()
 	local camera = workspace.CurrentCamera
 	if camera then uiScale.Scale = math.clamp(math.min(camera.ViewportSize.X / 1050, camera.ViewportSize.Y / 720), 0.68, 1) end
@@ -348,7 +348,7 @@ end
 local titleBar = make("Frame", {
 	Name = "TitleBar", Active = true, BackgroundColor3 = Theme.Panel,
 	BorderSizePixel = 0, Size = UDim2.new(1, 0, 0, 58),
-}, window) :
+}, window)
 
 -- Dragging only repositions the visual window.
 local dragging = false
@@ -412,7 +412,7 @@ for index, name in ipairs(pageNames) do
 	navButtons[name] = nav
 	text(nav, pageIcons[index], 16, Theme.Accent, Enum.Font.GothamBold, { Position = UDim2.fromOffset(9, 0), Size = UDim2.fromOffset(27, 40), TextXAlignment = Enum.TextXAlignment.Center })
 	text(nav, name, 12, Theme.Muted, Enum.Font.GothamMedium, { Position = UDim2.fromOffset(43, 0), Size = UDim2.new(1, -50, 1, 0) })
-	local page = make("Frame", { Name = name .. "Page", BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), Visible = false }, pagesHolder) :
+	local page = make("Frame", { Name = name .. "Page", BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), Visible = false }, pagesHolder)
 	pages[name] = page
 	nav.MouseButton1Click:Connect(function() setPage(name) end)
 end
@@ -427,8 +427,8 @@ end
 text(sidebar, "VISUAL BUILD", 9, Theme.Muted, Enum.Font.GothamBold, { Position = UDim2.new(0, 18, 1, -73), Size = UDim2.new(1, -32, 0, 16) })
 text(sidebar, "v1.0  •  CLIENT UI", 10, Theme.Muted, Enum.Font.Gotham, { Position = UDim2.new(0, 18, 1, -53), Size = UDim2.new(1, -32, 0, 18) })
 
-local function section(parent, title, subtitle, position: UDim2, size: UDim2)
-	local card = make("Frame", { BackgroundColor3 = Theme.Panel, BorderSizePixel = 0, Position = position, Size = size }, parent) :
+local function section(parent, title, subtitle, position, size)
+	local card = make("Frame", { BackgroundColor3 = Theme.Panel, BorderSizePixel = 0, Position = position, Size = size }, parent)
 	round(card, 9)
 	outline(card)
 	text(card, title, 14, Theme.Text, Enum.Font.GothamBold, { Position = UDim2.fromOffset(16, 12), Size = UDim2.new(1, -32, 0, 20) })
@@ -437,16 +437,16 @@ local function section(parent, title, subtitle, position: UDim2, size: UDim2)
 end
 
 -- Reusable controls: callbacks are optional and receive their updated UI value.
-local function createButton(parent, caption, callback))?, position: UDim2, width?)
+local function createButton(parent, caption, callback, position, width)
 	local control = baseButton(parent, caption, UDim2.fromOffset(width or 126, 32), Theme.AccentSoft)
 	control.Position = position
 	control.MouseButton1Click:Connect(function() if callback then callback() end end)
 	return control
 end
 
-local function createToggle(parent, caption, initial, callback))?, y)
+local function createToggle(parent, caption, initial, callback, y)
 	text(parent, caption, 12, Theme.Text, Enum.Font.GothamMedium, { Position = UDim2.fromOffset(16, y), Size = UDim2.new(1, -78, 0, 34) })
-	local track = make("TextButton", { AutoButtonColor = false, BackgroundColor3 = initial and Theme.Accent or Theme.Raised, BorderSizePixel = 0, Position = UDim2.new(1, -58, 0, y + 6), Size = UDim2.fromOffset(40, 22), Text = "" }, parent) :
+	local track = make("TextButton", { AutoButtonColor = false, BackgroundColor3 = initial and Theme.Accent or Theme.Raised, BorderSizePixel = 0, Position = UDim2.new(1, -58, 0, y + 6), Size = UDim2.fromOffset(40, 22), Text = "" }, parent)
 	round(track, 12)
 	local knob = make("Frame", { BackgroundColor3 = Color3.new(1, 1, 1), BorderSizePixel = 0, Position = initial and UDim2.fromOffset(21, 3) or UDim2.fromOffset(3, 3), Size = UDim2.fromOffset(16, 16) }, track)
 	round(knob, 9)
@@ -461,8 +461,8 @@ local function createToggle(parent, caption, initial, callback))?, y)
 	return function() return value end
 end
 
-local function createCheckbox(parent, caption, initial, callback))?, position: UDim2)
-	local control = make("TextButton", { AutoButtonColor = false, BackgroundTransparency = 1, Position = position, Size = UDim2.fromOffset(210, 28), Text = "" }, parent) :
+local function createCheckbox(parent, caption, initial, callback, position)
+	local control = make("TextButton", { AutoButtonColor = false, BackgroundTransparency = 1, Position = position, Size = UDim2.fromOffset(210, 28), Text = "" }, parent)
 	local box = make("Frame", { BackgroundColor3 = initial and Theme.Accent or Theme.Raised, BorderSizePixel = 0, Position = UDim2.fromOffset(0, 4), Size = UDim2.fromOffset(18, 18) }, control)
 	round(box, 5)
 	local check = text(box, "✓", 12, Color3.new(1, 1, 1), Enum.Font.GothamBold, { Size = UDim2.fromScale(1, 1), TextXAlignment = Enum.TextXAlignment.Center })
@@ -478,11 +478,11 @@ local function createCheckbox(parent, caption, initial, callback))?, position: U
 	control.MouseButton1Click:Connect(function() set(not value) end)
 end
 
-local function createSlider(parent, caption, minimum, maximum, initial, callback))?, y)
+local function createSlider(parent, caption, minimum, maximum, initial, callback, y)
 	text(parent, caption, 11, Theme.Text, Enum.Font.GothamMedium, { Position = UDim2.fromOffset(16, y), Size = UDim2.new(1, -80, 0, 18) })
 	local valueText = text(parent, tostring(initial), 10, Theme.Accent, Enum.Font.GothamBold, { Position = UDim2.new(1, -54, 0, y), Size = UDim2.fromOffset(38, 18), TextXAlignment = Enum.TextXAlignment.Right })
 	local alpha = (initial - minimum) / (maximum - minimum)
-	local rail = make("TextButton", { AutoButtonColor = false, BackgroundColor3 = Theme.Raised, BorderSizePixel = 0, Position = UDim2.fromOffset(16, y + 27), Size = UDim2.new(1, -32, 0, 6), Text = "" }, parent) :
+	local rail = make("TextButton", { AutoButtonColor = false, BackgroundColor3 = Theme.Raised, BorderSizePixel = 0, Position = UDim2.fromOffset(16, y + 27), Size = UDim2.new(1, -32, 0, 6), Text = "" }, parent)
 	round(rail, 4)
 	local fill = make("Frame", { BackgroundColor3 = Theme.Accent, BorderSizePixel = 0, Size = UDim2.fromScale(alpha, 1) }, rail)
 	round(fill, 4)
@@ -510,7 +510,7 @@ local function createSlider(parent, caption, minimum, maximum, initial, callback
 	return function() return value end
 end
 
-local function createDropdown(parent, caption, options, initial, callback))?, position: UDim2, width?)
+local function createDropdown(parent, caption, options, initial, callback, position, width)
 	local w = width or 210
 	text(parent, caption, 10, Theme.Muted, Enum.Font.GothamMedium, { Position = position, Size = UDim2.fromOffset(w, 16) })
 	local control = baseButton(parent, initial .. "     ▾", UDim2.fromOffset(w, 32), Theme.Raised)
@@ -522,7 +522,7 @@ local function createDropdown(parent, caption, options, initial, callback))?, po
 	make("UIListLayout", { SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 1) }, choices)
 	local value = initial
 	for index, option in ipairs(options) do
-		local choice = make("TextButton", { AutoButtonColor = false, BackgroundColor3 = Theme.Raised, BorderSizePixel = 0, Size = UDim2.new(1, 0, 0, 28), Text = option, TextColor3 = Theme.Text, TextSize = 11, Font = Enum.Font.Gotham, LayoutOrder = index, ZIndex = 11 }, choices) :
+		local choice = make("TextButton", { AutoButtonColor = false, BackgroundColor3 = Theme.Raised, BorderSizePixel = 0, Size = UDim2.new(1, 0, 0, 28), Text = option, TextColor3 = Theme.Text, TextSize = 11, Font = Enum.Font.Gotham, LayoutOrder = index, ZIndex = 11 }, choices)
 		choice.MouseButton1Click:Connect(function()
 			value = option
 			control.Text = option .. "     ▾"
@@ -569,7 +569,7 @@ for index, name in ipairs(tabNames) do
 	tab.Position = UDim2.fromOffset((index - 1) * 112, 0)
 	tab.TextColor3 = Theme.Muted
 	subTabs[name] = tab
-	local sub = make("Frame", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), Visible = false }, subHolder) :
+	local sub = make("Frame", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), Visible = false }, subHolder)
 	subPages[name] = sub
 	tab.MouseButton1Click:Connect(function() setSubTab(name) end)
 end
@@ -3747,7 +3747,7 @@ function StartAutoCollect()
         end
         local best = collectCache[1]
         if not best then return end
-        -- solo heals si Ammo off? si AutoCollectAmmo, toma todo
+        -- solo heals si Ammo off si AutoCollectAmmo, toma todo
         local n = string.lower(best.name or "")
         local isAmmo = n:find("ammo") or n:find("bullet")
         if isAmmo and config.AutoCollectAmmo == false then
@@ -21353,7 +21353,7 @@ CfgBox:AddButton({
             Notify("Config", "Guardada: " .. n)
             RefreshCfg()
         else
-            Notify("Config", "Error al guardar (¿ya existe? usa Overwrite)")
+            Notify("Config", "Error al guardar (¿ya existe usa Overwrite)")
         end
     end
 })
