@@ -1,5 +1,5 @@
 --!nonstrict
--- NEON MENU · v2.0.2 · FIX: "UIStroke / CursorIcon is not a valid member of ..."
+-- NEON MENU · v2.1.1 · textos más claros · sin desbordes
 --[[═══════════════════════════════════════════════════════════════════════════════
     N E O N   M E N U   ·   Luau (Roblox)   ·   v2 “GameSense”
    ───────────────────────────────────────────────────────────────────────────
@@ -45,7 +45,7 @@
 --==============================================================================
 local Config = {}
 
-Config.Version = "2.0.2"   -- fix: UIStroke, CursorIcon y propiedades/clases ausentes
+Config.Version = "2.1.1"   -- contraste de textos + sin desbordes (TextSize entero)
 
 -- Tamaño de ventana y estructura
 Config.WindowSize     = Vector2.new(620, 540)
@@ -95,13 +95,14 @@ Config.Color = {
 	checkStroke   = Color3.fromRGB(44, 44, 44),   -- #2c2c2c
 	scrollThumb   = Color3.fromRGB(52, 52, 52),   -- #343434
 	scrollTrack   = Color3.fromRGB(20, 20, 20),
-	text          = Color3.fromRGB(207, 207, 209),-- #cfcfd1
-	textTitle     = Color3.fromRGB(234, 234, 235),-- #eaeaeb
-	textDim       = Color3.fromRGB(138, 138, 143),-- #8a8a8f
-	textFaint     = Color3.fromRGB(107, 107, 112),-- #6b6b70
-	iconIdle      = Color3.fromRGB(111, 111, 113),-- #6f6f71
-	iconHover     = Color3.fromRGB(150, 150, 154),-- #96969a
-	iconActive    = Color3.fromRGB(196, 196, 199),-- #c4c4c7
+	text          = Color3.fromRGB(228, 228, 231),-- #e4e4e7
+	textTitle     = Color3.fromRGB(246, 246, 248),-- #f6f6f8
+	textDim       = Color3.fromRGB(172, 172, 178),-- #acacb2
+	textFaint     = Color3.fromRGB(146, 146, 152),-- #929298
+	textButton    = Color3.fromRGB(232, 232, 235),-- #e8e8eb
+	iconIdle      = Color3.fromRGB(142, 142, 147),-- #8e8e93
+	iconHover     = Color3.fromRGB(178, 178, 183),-- #b2b2b7
+	iconActive    = Color3.fromRGB(226, 226, 230),-- #e2e2e6
 	white         = Color3.fromRGB(255, 255, 255),
 }
 
@@ -173,6 +174,14 @@ end
 -- (p. ej. CursorIcon o TextTruncate) se ignoran en lugar de abortar el script.
 local warnedProps = {}
 
+-- Propiedades puramente cosméticas: si el entorno no las soporta se omiten en
+-- silencio (no afectan al diseño ni al funcionamiento).
+local SILENT_PROPS = {
+	CursorIcon = true, TextTruncate = true, TextWrapped = true,
+	ElasticBehavior = true, ScrollingDirection = true,
+	AutomaticCanvasSize = true, Selectable = true, RichText = true,
+}
+
 --- Asigna una propiedad a un Instance sin riesgo de abortar.
 -- Devuelve true si se aplicó.
 function Util.set(obj, prop, value)
@@ -182,7 +191,7 @@ function Util.set(obj, prop, value)
 	local ok, err = pcall(function()
 		obj[prop] = value
 	end)
-	if not ok then
+	if not ok and not SILENT_PROPS[prop] then
 		local key = tostring(obj.ClassName) .. "." .. tostring(prop)
 		if not warnedProps[key] then
 			warnedProps[key] = true
@@ -395,11 +404,13 @@ function Util.disconnectAll()
 end
 
 --==============================================================================
--- 3. ICONS · iconos de silueta dibujados con primitivas (sin assets)
+-- 3. ICONS · iconos de silueta (máscara, globo, mira, sol, engranajes, hoz, persona)
 --==============================================================================
--- Cada icono devuelve una tabla { frame, setColor(fn), setKnock(fn) }.
--- "knock" son los recortes interiores, que se pintan con el color del fondo
--- de la sidebar para simular siluetas con huecos (como en el preview).
+-- Se dibujan con primitivas de GUI (Frame + UICorner + UIStroke), sin assets ni
+-- imágenes externas. Cada icono devuelve:
+--   { frame, setColor(fn), setKnock(color), solid = {...}, knock = {...} }
+-- "knock" son los huecos interiores, que se pintan con el color del fondo de la
+-- sidebar para simular siluetas recortadas como en la referencia.
 
 local Icons = {}
 
@@ -416,250 +427,278 @@ local function piece(parent, size, position, rotation, radius, color)
 	return f
 end
 
-local function ring(parent, diameter, thickness, position, color)
+--- Círculo sólido (radio = diámetro / 2).
+local function dot(parent, diameter, position, color)
+	return piece(parent, Vector2.new(diameter, diameter), position, 0,
+		math.floor(diameter / 2), color)
+end
+
+--- Contorno circular o elíptico.
+local function outline(parent, width, height, thickness, position)
 	local f = Util.create("Frame", {
-		Size = UDim2.fromOffset(diameter, diameter),
+		Size = UDim2.fromOffset(width, height),
 		Position = UDim2.fromOffset(position.X, position.Y),
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 	}, parent)
-	Util.corner(f, math.floor(diameter / 2))
-	local s = Util.stroke(f, color or Config.Color.iconIdle, thickness or 1.5)
-	return f, s
+	Util.corner(f, math.floor(math.min(width, height) / 2))
+	local stroke = Util.stroke(f, Config.Color.iconIdle, thickness or 1.6)
+	return f, stroke
 end
 
---- Icono 1 · máscara con pistola (Misc)
-local function iconSpray(holder, size)
-	local c = size / 2
-	local mask = piece(holder, Vector2.new(size * 0.34, size * 0.52),
-		Vector2.new(c - size * 0.11, c + size * 0.02), -12, size * 0.15)
-	local holes = {
-		piece(holder, Vector2.new(size * 0.13, size * 0.13), Vector2.new(c - size * 0.19, c - size * 0.15), 0, 999),
-		piece(holder, Vector2.new(size * 0.11, size * 0.11), Vector2.new(c - size * 0.03, c - size * 0.20), 0, 999),
-		piece(holder, Vector2.new(size * 0.09, size * 0.09), Vector2.new(c - size * 0.15, c + size * 0.07), 0, 999),
-	}
-	local barrel = piece(holder, Vector2.new(size * 0.30, size * 0.075), Vector2.new(c + size * 0.20, c - size * 0.28), -16, 1)
-	local grip = piece(holder, Vector2.new(size * 0.085, size * 0.13), Vector2.new(c + size * 0.11, c - size * 0.20), -16, 1)
-	local sparks = {
-		piece(holder, Vector2.new(size * 0.05, size * 0.05), Vector2.new(c + size * 0.40, c - size * 0.42), 0, 999),
-		piece(holder, Vector2.new(size * 0.045, size * 0.045), Vector2.new(c + size * 0.45, c - size * 0.30), 0, 999),
-		piece(holder, Vector2.new(size * 0.04, size * 0.04), Vector2.new(c + size * 0.36, c - size * 0.24), 0, 999),
-	}
-	return {
-		solid = { mask, barrel, grip, sparks[1], sparks[2], sparks[3] },
-		knock = holes,
-	}
+--- Arco hecho de círculos: unión continua, grosor variable.
+local function arcOfDots(parent, center, radius, fromDeg, toDeg, steps, thicknessAt)
+	local dots = {}
+	for i = 0, steps do
+		local t = i / steps
+		local angle = math.rad(fromDeg + (toDeg - fromDeg) * t)
+		local thickness = thicknessAt(t)
+		dots[#dots + 1] = dot(parent, thickness,
+			Vector2.new(center.X + math.cos(angle) * radius,
+				center.Y + math.sin(angle) * radius))
+	end
+	return dots
 end
 
---- Icono 2 · globo terráqueo tachado (Player)
-local function iconGlobe(holder, size)
-	local c = size / 2
-	local circle, circleStroke = ring(holder, size * 0.56, 1.6, Vector2.new(c, c))
-	local meridian = Util.create("Frame", {
-		Size = UDim2.fromOffset(size * 0.20, size * 0.56),
-		Position = UDim2.fromOffset(c, c),
-		AnchorPoint = Vector2.new(0.5, 0.5),
-		BackgroundTransparency = 1,
-		BorderSizePixel = 0,
-	}, holder)
-	Util.corner(meridian, math.floor(size * 0.10))
-	local meridianStroke = Util.stroke(meridian, Config.Color.iconIdle, 1.3)
-	local equator = piece(holder, Vector2.new(size * 0.56, size * 0.038), Vector2.new(c, c), 0, 0)
-	local blob = piece(holder, Vector2.new(size * 0.21, size * 0.19),
-		Vector2.new(c - size * 0.03, c + size * 0.02), 20, size * 0.08)
-	local slash = piece(holder, Vector2.new(size * 0.66, size * 0.05), Vector2.new(c, c), -45, 0)
-	local slashGap = piece(holder, Vector2.new(size * 0.13, size * 0.05), Vector2.new(c, c), -45, 0)
-	return {
-		solid = { circleStroke, meridianStroke, equator, blob, slash },
-		knock = { slashGap },
-	}
+-- ── Icono 1 · máscara con pistola (Misc) ────────────────────────────────────
+local function iconMask(holder, S)
+	local solid, knock = {}, {}
+
+	-- careta: tres piezas encadenadas (frente, rostro, mentón)
+	solid[#solid + 1] = dot(holder, S * 0.30, Vector2.new(S * 0.40, S * 0.34))
+	solid[#solid + 1] = piece(holder, Vector2.new(S * 0.30, S * 0.30),
+		Vector2.new(S * 0.41, S * 0.54), -10, S * 0.13)
+	solid[#solid + 1] = piece(holder, Vector2.new(S * 0.17, S * 0.19),
+		Vector2.new(S * 0.36, S * 0.72), -10, S * 0.08)
+
+	-- huecos de la careta
+	knock[#knock + 1] = dot(holder, S * 0.075, Vector2.new(S * 0.35, S * 0.31))
+	knock[#knock + 1] = dot(holder, S * 0.065, Vector2.new(S * 0.47, S * 0.29))
+	knock[#knock + 1] = dot(holder, S * 0.060, Vector2.new(S * 0.37, S * 0.47))
+
+	-- pistola apuntando arriba-derecha
+	solid[#solid + 1] = piece(holder, Vector2.new(S * 0.30, S * 0.075),
+		Vector2.new(S * 0.68, S * 0.30), -16, math.floor(S * 0.03))
+	solid[#solid + 1] = piece(holder, Vector2.new(S * 0.085, S * 0.17),
+		Vector2.new(S * 0.60, S * 0.40), -16, math.floor(S * 0.03))
+	solid[#solid + 1] = dot(holder, S * 0.055, Vector2.new(S * 0.83, S * 0.26))
+
+	-- destello de 3 puntos
+	solid[#solid + 1] = dot(holder, S * 0.055, Vector2.new(S * 0.90, S * 0.17))
+	solid[#solid + 1] = dot(holder, S * 0.045, Vector2.new(S * 0.95, S * 0.27))
+	solid[#solid + 1] = dot(holder, S * 0.040, Vector2.new(S * 0.88, S * 0.11))
+
+	return { solid = solid, knock = knock }
 end
 
---- Icono 3 · mira clásica (Combat)
-local function iconCrosshair(holder, size)
-	local c = size / 2
-	local circle, circleStroke = ring(holder, size * 0.60, 1.6, Vector2.new(c, c))
-	local t = size * 0.05
-	local ticks = {
-		piece(holder, Vector2.new(size * 0.035, size * 0.10), Vector2.new(c, c - size * 0.34), 0, 0),
-		piece(holder, Vector2.new(size * 0.035, size * 0.10), Vector2.new(c, c + size * 0.34), 0, 0),
-		piece(holder, Vector2.new(size * 0.10, size * 0.035), Vector2.new(c - size * 0.34, c), 0, 0),
-		piece(holder, Vector2.new(size * 0.10, size * 0.035), Vector2.new(c + size * 0.34, c), 0, 0),
-	}
-	local crossV = piece(holder, Vector2.new(size * 0.032, size * 0.18), Vector2.new(c, c), 0, 0)
-	local crossH = piece(holder, Vector2.new(size * 0.18, size * 0.032), Vector2.new(c, c), 0, 0)
-	local dot = piece(holder, Vector2.new(t * 1.2, t * 1.2), Vector2.new(c, c), 0, 999)
-	return {
-		solid = { circleStroke, ticks[1], ticks[2], ticks[3], ticks[4], crossV, crossH, dot },
-		knock = {},
-	}
+-- ── Icono 2 · globo terráqueo tachado (Player) ──────────────────────────────
+local function iconGlobeNoWeapon(holder, S)
+	local c = Vector2.new(S * 0.48, S * 0.50)
+	local solid, knock = {}, {}
+
+	local ringFrame, ringStroke = outline(holder, S * 0.66, S * 0.66, S * 0.055, c)
+	solid[#solid + 1] = ringStroke
+
+	-- meridiano (elipse vertical)
+	local meridF, meridStroke = outline(holder, S * 0.34, S * 0.66, S * 0.045, c)
+	solid[#solid + 1] = meridStroke
+
+	-- ecuador
+	solid[#solid + 1] = piece(holder, Vector2.new(S * 0.66, S * 0.045), c, 0, 0)
+
+	-- pistola dentro del globo (silueta)
+	solid[#solid + 1] = piece(holder, Vector2.new(S * 0.26, S * 0.065),
+		Vector2.new(c.X + S * 0.02, c.Y - S * 0.06), -28, math.floor(S * 0.025))
+	solid[#solid + 1] = piece(holder, Vector2.new(S * 0.075, S * 0.14),
+		Vector2.new(c.X - S * 0.02, c.Y + S * 0.05), -28, math.floor(S * 0.025))
+
+	-- barra diagonal (prohibido) con su hueco de separación
+	solid[#solid + 1] = piece(holder, Vector2.new(S * 0.80, S * 0.075), c, -45, 0)
+	knock[#knock + 1] = piece(holder, Vector2.new(S * 0.14, S * 0.075), c, -45, 0)
+
+	return { solid = solid, knock = knock }
 end
 
---- Icono 4 · sol con mitad rellena (Visuals)
-local function iconSun(holder, size)
-	local c = size / 2
-	local diameter = size * 0.46
-	local circle, circleStroke = ring(holder, diameter, 1.7, Vector2.new(c, c))
+-- ── Icono 3 · mira clásica (Combat) ────────────────────────────────────────
+local function iconCrosshair(holder, S)
+	local c = Vector2.new(S * 0.5, S * 0.5)
+	local solid = {}
+
+	local ringFrame, ringStroke = outline(holder, S * 0.62, S * 0.62, S * 0.055, c)
+	solid[#solid + 1] = ringStroke
+
+	-- marcas cardinales
+	local tickLen, tickThick = S * 0.12, S * 0.05
+	solid[#solid + 1] = piece(holder, Vector2.new(tickThick, tickLen),
+		Vector2.new(c.X, c.Y - S * 0.36), 0, 0)
+	solid[#solid + 1] = piece(holder, Vector2.new(tickThick, tickLen),
+		Vector2.new(c.X, c.Y + S * 0.36), 0, 0)
+	solid[#solid + 1] = piece(holder, Vector2.new(tickLen, tickThick),
+		Vector2.new(c.X - S * 0.36, c.Y), 0, 0)
+	solid[#solid + 1] = piece(holder, Vector2.new(tickLen, tickThick),
+		Vector2.new(c.X + S * 0.36, c.Y), 0, 0)
+
+	-- cruz central y punto
+	solid[#solid + 1] = piece(holder, Vector2.new(S * 0.045, S * 0.20), c, 0, 0)
+	solid[#solid + 1] = piece(holder, Vector2.new(S * 0.20, S * 0.045), c, 0, 0)
+	solid[#solid + 1] = dot(holder, S * 0.055, c)
+
+	return { solid = solid, knock = {} }
+end
+
+-- ── Icono 4 · sol con mitad rellena (Visuals) ──────────────────────────────
+local function iconSun(holder, S)
+	local c = Vector2.new(S * 0.5, S * 0.5)
+	local solid = {}
+
+	-- rayos
+	for i = 0, 7 do
+		local angle = math.rad(i * 45)
+		local radius = S * 0.40
+		solid[#solid + 1] = piece(holder, Vector2.new(S * 0.055, S * 0.17),
+			Vector2.new(c.X + math.cos(angle) * radius, c.Y + math.sin(angle) * radius),
+			i * 45, math.floor(S * 0.03))
+	end
+
+	-- disco: contorno + mitad derecha rellena
+	local ringF, ringStroke = outline(holder, S * 0.44, S * 0.44, S * 0.055, c)
+	solid[#solid + 1] = ringStroke
+
 	local clip = Util.create("Frame", {
-		Size = UDim2.fromOffset(diameter - 1.6, diameter - 1.6),
-		Position = UDim2.fromOffset(c, c),
+		Size = UDim2.fromOffset(S * 0.42, S * 0.42),
+		Position = UDim2.fromOffset(c.X, c.Y),
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		BackgroundTransparency = 1,
 		ClipsDescendants = true,
 		BorderSizePixel = 0,
 	}, holder)
-	Util.corner(clip, math.floor(diameter / 2))
-	local half = Util.create("Frame", {
-		Size = UDim2.fromScale(0.5, 1),
-		Position = UDim2.fromScale(0.5, 0),
+	Util.corner(clip, math.floor(S * 0.21))
+
+	solid[#solid + 1] = Util.create("Frame", {
+		Size = UDim2.fromScale(0.52, 1),
+		Position = UDim2.fromScale(0.48, 0),
 		BackgroundColor3 = Config.Color.iconIdle,
 		BorderSizePixel = 0,
 	}, clip)
 
-	local rays = {}
-	for i = 0, 7 do
-		local angle = math.rad(i * 45)
-		local radius = size * 0.43
-		local ray = piece(holder, Vector2.new(1.7, size * 0.11),
-			Vector2.new(c + math.cos(angle) * radius, c + math.sin(angle) * radius), i * 45, 0)
-		rays[#rays + 1] = ray
-	end
-	local solid = { circleStroke, half }
-	for _, ray in ipairs(rays) do
-		solid[#solid + 1] = ray
-	end
 	return { solid = solid, knock = {} }
 end
 
---- Icono 5 · engranajes (Config)
--- bodyDiameter y strokeWidth derivan del radio de colocación de los dientes,
--- de modo que el cuerpo siempre queda unido a ellos.
-local function gearIcon(holder, center, teeth, radius)
-	local solids, knocks = {}, {}
-
+-- ── Icono 5 · engranajes (Config) ──────────────────────────────────────────
+-- Cuerpo circular sólido con dientes solapados (se funden en una sola silueta)
+-- y buje central recortado.
+local function gearSolid(holder, center, radius, teeth, solid)
 	for i = 0, teeth - 1 do
 		local angle = math.rad(i * (360 / teeth) - 90)
-		local tooth = piece(holder,
-			Vector2.new(radius * 0.42, radius * 0.58),
+		solid[#solid + 1] = piece(holder,
+			Vector2.new(radius * 0.46, radius * 0.62),
 			Vector2.new(center.X + math.cos(angle) * radius * 0.92,
 				center.Y + math.sin(angle) * radius * 0.92),
-			i * (360 / teeth), 0)
-		solids[#solids + 1] = tooth
+			i * (360 / teeth), math.floor(radius * 0.06))
 	end
-
-	local bodyDiameter = radius * 1.72
-	local body, bodyStroke = ring(holder, bodyDiameter, radius * 0.52, center)
-	solids[#solids + 1] = bodyStroke
-
-	local hole = piece(holder, Vector2.new(radius * 0.66, radius * 0.66), center, 0, 999)
-	knocks[#knocks + 1] = hole
-
-	return solids, knocks
+	solid[#solid + 1] = dot(holder, radius * 1.42, center)
 end
 
-local function iconGear(holder, size)
-	local c = size / 2
-	local s1, k1 = gearIcon(holder, Vector2.new(c - size * 0.13, c + size * 0.15), 8, size * 0.19)
-	local s2, k2 = gearIcon(holder, Vector2.new(c + size * 0.26, c - size * 0.22), 7, size * 0.115)
-	local s3, k3 = gearIcon(holder, Vector2.new(c + size * 0.28, c + size * 0.26), 6, size * 0.10)
+local function iconGears(holder, S)
 	local solid, knock = {}, {}
-	for _, list in ipairs({ s1, s2, s3 }) do
-		for _, v in ipairs(list) do
-			solid[#solid + 1] = v
-		end
-	end
-	for _, list in ipairs({ k1, k2, k3 }) do
-		for _, v in ipairs(list) do
-			knock[#knock + 1] = v
-		end
-	end
+	local bigCenter   = Vector2.new(S * 0.36, S * 0.60)
+	local midCenter   = Vector2.new(S * 0.71, S * 0.26)
+	local smallCenter = Vector2.new(S * 0.73, S * 0.68)
+
+	gearSolid(holder, bigCenter, S * 0.19, 8, solid)
+	gearSolid(holder, midCenter, S * 0.120, 7, solid)
+	gearSolid(holder, smallCenter, S * 0.105, 6, solid)
+
+	knock[#knock + 1] = dot(holder, S * 0.140, bigCenter)
+	knock[#knock + 1] = dot(holder, S * 0.080, midCenter)
+	knock[#knock + 1] = dot(holder, S * 0.070, smallCenter)
+
 	return { solid = solid, knock = knock }
 end
 
---- Icono 6 · hoz / media luna (Extra)
--- Arco continuo construido con círculos (sin uniones visibles): grueso en el
--- centro y afinado hacia las puntas, con remate esférico en la empuñadura.
-local function iconScythe(holder, size)
-	local c = size / 2
+-- ── Icono 6 · hoz (Extra) ──────────────────────────────────────────────────
+-- Hoja curva que barre de arriba-izquierda a abajo-derecha, con punta afilada
+-- y remate esférico en la empuñadura (como la referencia).
+local function iconScythe(holder, S)
+	local center = Vector2.new(S * 0.54, S * 0.60)
+	local radius = S * 0.34
 	local solid = {}
 
-	local startAngle, endAngle = 196, 330
-	local steps = 14
-	local arcRadius = size * 0.33
-	local center = Vector2.new(c + size * 0.04, c + size * 0.10)
-
-	local function pointAt(t)
-		local angle = math.rad(startAngle + (endAngle - startAngle) * t)
-		return Vector2.new(
-			center.X + math.cos(angle) * arcRadius,
-			center.Y + math.sin(angle) * arcRadius
-		)
-	end
-
-	for i = 0, steps do
-		local t = i / steps
+	local dots = arcOfDots(holder, center, radius, 196, 352, 18, function(t)
 		local taper = math.sin(math.pi * t)
-		local thickness = size * (0.055 + 0.13 * taper)
-		local dot = piece(holder, Vector2.new(thickness, thickness), pointAt(t), 0, 999)
-		solid[#solid + 1] = dot
+		return S * (0.050 + 0.135 * taper)
+	end)
+	for _, d in ipairs(dots) do
+		solid[#solid + 1] = d
 	end
 
-	-- punta afilada del arco
-	local tip = piece(holder, Vector2.new(size * 0.05, size * 0.05), pointAt(0), 0, 999)
-	solid[#solid + 1] = tip
+	-- punta afilada (extremo inicial del arco)
+	local tipAngle = math.rad(196)
+	solid[#solid + 1] = piece(holder, Vector2.new(S * 0.055, S * 0.19),
+		Vector2.new(center.X + math.cos(tipAngle) * radius,
+			center.Y + math.sin(tipAngle) * radius),
+		196 + 90, math.floor(S * 0.027))
 
-	-- remate esférico unido al extremo del arco
-	local knobPos = pointAt(1)
-	local knob = piece(holder, Vector2.new(size * 0.15, size * 0.15),
-		Vector2.new(knobPos.X, knobPos.Y), 0, 999)
-	solid[#solid + 1] = knob
+	-- remate esférico (extremo final del arco)
+	local endAngle = math.rad(352)
+	solid[#solid + 1] = dot(holder, S * 0.165,
+		Vector2.new(center.X + math.cos(endAngle) * radius,
+			center.Y + math.sin(endAngle) * radius))
 
 	return { solid = solid, knock = {} }
 end
 
---- Icono 7 · persona (Account)
-local function iconPerson(holder, size)
-	local c = size / 2
-	local head = piece(holder, Vector2.new(size * 0.30, size * 0.30), Vector2.new(c, c - size * 0.16), 0, 999)
-	local body = piece(holder, Vector2.new(size * 0.58, size * 0.29), Vector2.new(c, c + size * 0.22), 0, size * 0.22)
-	return { solid = { head, body }, knock = {} }
+-- ── Icono 7 · persona (Account) ────────────────────────────────────────────
+local function iconPerson(holder, S)
+	local solid = {
+		dot(holder, S * 0.33, Vector2.new(S * 0.5, S * 0.30)),
+		piece(holder, Vector2.new(S * 0.68, S * 0.33),
+			Vector2.new(S * 0.5, S * 0.76), 0, S * 0.17),
+	}
+	return { solid = solid, knock = {} }
 end
 
 local ICON_BUILDERS = {
-	spray = iconSpray,
-	globe = iconGlobe,
+	spray = iconMask,
+	mask = iconMask,
+	globe = iconGlobeNoWeapon,
 	crosshair = iconCrosshair,
 	sun = iconSun,
-	gear = iconGear,
+	gear = iconGears,
 	scythe = iconScythe,
 	person = iconPerson,
 }
 
---- Construye un icono dentro del padre. Devuelve { frame, setColor, setKnock }.
+--- Construye un icono centrado dentro del padre.
+-- Devuelve { frame, solid, knock, setColor(fn), setKnock(color) }.
 function Icons.build(parent, kind, size)
-	size = size or 40
+	size = size or 46
 	local holder = Util.create("Frame", {
 		Size = UDim2.fromOffset(size, size),
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.5, 0.5),
 		BackgroundTransparency = 1,
+		ClipsDescendants = false,
 	}, parent)
 
 	local builder = ICON_BUILDERS[kind] or ICON_BUILDERS.gear
-	-- el dibujo ocupa ~1.22x el hueco de 44 px para que la silueta llene la celda,
-	-- igual que en la vista previa (el padre no recorta).
-	local data = builder(holder, size * 1.22)
+	-- el dibujo cabe exactamente en su celda: nada sobresale del tab
+	local drawing = builder(holder, size)
 
-	local icon = { frame = holder, solid = data.solid, knock = data.knock }
-	icon.knockColor = Config.Color.sidebar
+	local icon = {
+		frame = holder,
+		solid = drawing.solid,
+		knock = drawing.knock,
+		knockColor = Config.Color.sidebar,
+	}
 
-	function icon.setColor(fn)
+	function icon.setColor(valueFn)
 		for _, obj in ipairs(icon.solid) do
 			if obj.ClassName == "UIStroke" then
-				Util.set(obj, "Color", fn())
+				obj.Color = valueFn()
 			else
-				Util.set(obj, "BackgroundColor3", fn())
+				Util.set(obj, "BackgroundColor3", valueFn())
 			end
 		end
 	end
@@ -772,7 +811,7 @@ function Components.Panel(parent, title, options)
 		Util.label(panel, {
 			Text = title,
 			Font = Config.Font.bold,
-			TextSize = 11.5,
+			TextSize = 12,
 			TextColor3 = Config.Color.textTitle,
 			Size = UDim2.new(1, 0, 0, 14),
 			LayoutOrder = 1,
@@ -798,6 +837,7 @@ local function createRow(parent, height, interactive)
 		BackgroundColor3 = Config.Color.rowHover,
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
+		ClipsDescendants = true,
 	}, parent)
 	Util.corner(row, 0)
 	if interactive then
@@ -827,22 +867,22 @@ local function makeKeyCapture(row, options)
 	local current = options.default or nil
 	local capturing = false
 
+	local keyWidth = options.width or 42
+
 	local keyLabel = Util.label(row, {
 		Text = "[ ]",
 		Font = Config.Font.bold,
 		TextSize = 10,
 		TextColor3 = Config.Color.textFaint,
-		Size = UDim2.fromOffset(options.width or 42, options.height or Config.RowHeight),
-		Position = UDim2.new(1, -(options.width or 42), 0.5, 0),
-		AnchorPoint = Vector2.new(0, 0.5),
+		Size = UDim2.new(0, keyWidth, 1, 0),
+		Position = UDim2.new(1, -keyWidth, 0, 0),
 		TextXAlignment = Enum.TextXAlignment.Right,
 		ZIndex = 5,
 	})
 
 	local hit = Util.create("TextButton", {
-		Size = UDim2.fromOffset((options.width or 42) + 6, options.height or Config.RowHeight),
-		Position = UDim2.new(1, -(options.width or 42) - 3, 0.5, 0),
-		AnchorPoint = Vector2.new(0, 0.5),
+		Size = UDim2.new(0, keyWidth, 1, 0),
+		Position = UDim2.new(1, -keyWidth, 0, 0),
 		BackgroundTransparency = 1,
 		Text = "",
 		AutoButtonColor = false,
@@ -1029,7 +1069,7 @@ function Components.Slider(parent, options)
 	local value     = math.clamp(options.default or min, min, max)
 
 	local wrap = Util.create("Frame", {
-		Size = UDim2.new(1, 0, 0, 20),
+		Size = UDim2.new(1, 0, 0, 22),
 		BackgroundTransparency = 1,
 	}, parent)
 
@@ -1074,7 +1114,7 @@ function Components.Slider(parent, options)
 
 	local hit = Util.create("TextButton", {
 		Size = UDim2.new(1, 0, 0, 13),
-		Position = UDim2.fromOffset(0, 10),
+		Position = UDim2.fromOffset(0, 9),
 		BackgroundTransparency = 1,
 		Text = "",
 		AutoButtonColor = false,
@@ -1161,7 +1201,7 @@ function Components.Dropdown(parent, options)
 	if options.text then
 		Util.label(wrap, {
 			Text = options.text,
-			TextSize = 10.5,
+			TextSize = 11,
 			TextColor3 = Config.Color.textDim,
 			Size = UDim2.new(1, 0, 0, 11),
 		})
@@ -1324,7 +1364,7 @@ function Components.Keybind(parent, options)
 	local capture = makeKeyCapture(row, {
 		flag = options.flag,
 		default = options.default,
-		width = 42,
+		width = options.width or 42,
 		height = options.height or Config.RowHeight,
 		callback = options.callback,
 		onKey = options.onKey,
@@ -1446,7 +1486,7 @@ function Components.SubTitle(parent, text)
 		Text = text,
 		Font = Config.Font.bold,
 		TextSize = 11,
-		TextColor3 = Color3.fromRGB(224, 224, 226),
+		TextColor3 = Config.Color.textTitle,
 		Size = UDim2.new(1, 0, 0, 14),
 	})
 end
@@ -1750,7 +1790,7 @@ function Window.AddTab(options)
 	Util.corner(indicator, 0)
 	State.bindAccent(indicator, "bg")
 
-	local icon = Icons.build(button, options.icon or "gear", options.iconSize or 44)
+	local icon = Icons.build(button, options.icon or "gear", options.iconSize or 48)
 
 	Util.connect(button.MouseEnter, function()
 		if Window.ActiveTab ~= name then
@@ -1956,7 +1996,7 @@ local function scrollPanel(parent, title)
 	Util.label(panel, {
 		Text = title,
 		Font = Config.Font.bold,
-		TextSize = 11.5,
+		TextSize = 12,
 		TextColor3 = Config.Color.textTitle,
 		Size = UDim2.new(1, 0, 0, 15),
 	})
@@ -2138,7 +2178,10 @@ do
 		BackgroundTransparency = 1,
 	}, row)
 
-	API.AddKeybind(keyHolder, { text = "", flag = "config_key", default = Enum.KeyCode.X, height = Config.FieldHeight })
+	API.AddKeybind(keyHolder, {
+		text = "", flag = "config_key", default = Enum.KeyCode.X,
+		height = Config.FieldHeight, width = 28,
+	})
 end
 
 API.AddButton(otherBody, { text = "Load config", callback = function() Persistence.load() end })
@@ -2388,7 +2431,7 @@ end
 
 -- Aviso de arranque (sin animaciones) + marca de versión en consola
 Window.Notify("Neon Menu v" .. Config.Version .. " · " .. Util.keyName(State.MenuKey) .. " para abrir/cerrar")
-print(("[NeonMenu] v%s cargado · fix UIStroke activo · %s abre/cierra")
+print(("[NeonMenu] v%s cargado · %s abre/cierra")
 	:format(Config.Version, Util.keyName(State.MenuKey)))
 
 return API
