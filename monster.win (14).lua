@@ -1,5 +1,5 @@
 --!nonstrict
--- NEON MENU · v2.0.1 · FIX: "UIStroke is not a valid member of Frame"
+-- NEON MENU · v2.0.2 · FIX: "UIStroke / CursorIcon is not a valid member of ..."
 --[[═══════════════════════════════════════════════════════════════════════════════
     N E O N   M E N U   ·   Luau (Roblox)   ·   v2 “GameSense”
    ───────────────────────────────────────────────────────────────────────────
@@ -45,7 +45,7 @@
 --==============================================================================
 local Config = {}
 
-Config.Version = "2.0.1"   -- fix: UIStroke / propiedades inexistentes
+Config.Version = "2.0.2"   -- fix: UIStroke, CursorIcon y propiedades/clases ausentes
 
 -- Tamaño de ventana y estructura
 Config.WindowSize     = Vector2.new(620, 540)
@@ -164,18 +164,40 @@ Util.setclipboard = optional("setclipboard")
 Util.getclipboard = optional("getclipboard")
 Util.gethui      = optional("gethui")
 
---- Asigna una propiedad sólo si es válida (nunca aborta el script).
--- Las instancias de Roblox lanzan "X is not a valid member of Y" al asignar
--- una propiedad inexistente; aquí ese error se captura y se informa.
+--- Alias histórico de Util.set (se mantiene por compatibilidad).
 function Util.setProperty(obj, key, value)
+	return Util.set(obj, key, value)
+end
+
+-- Propiedades ausentes en algunas versiones de Roblox/ejecutores
+-- (p. ej. CursorIcon o TextTruncate) se ignoran en lugar de abortar el script.
+local warnedProps = {}
+
+--- Asigna una propiedad a un Instance sin riesgo de abortar.
+-- Devuelve true si se aplicó.
+function Util.set(obj, prop, value)
+	if obj == nil then
+		return false
+	end
 	local ok, err = pcall(function()
-		obj[key] = value
+		obj[prop] = value
 	end)
 	if not ok then
-		warn("[NeonMenu] propiedad ignorada en " .. tostring(obj.ClassName) ..
-			"." .. tostring(key) .. ": " .. tostring(err))
+		local key = tostring(obj.ClassName) .. "." .. tostring(prop)
+		if not warnedProps[key] then
+			warnedProps[key] = true
+			warn("[NeonMenu] propiedad no soportada aquí (" .. key .. "): se ignora")
+		end
 	end
 	return ok
+end
+
+--- Aplica una tabla de propiedades.
+function Util.setAll(obj, props)
+	for key, value in pairs(props or {}) do
+		Util.set(obj, key, value)
+	end
+	return obj
 end
 
 --- Crea una instancia aplicando propiedades y orden automático en listas.
@@ -189,15 +211,21 @@ function Util.create(class, props, parent)
 	if parent then
 		obj.Parent = parent
 		if obj:IsA("GuiObject") and parent:FindFirstChildOfClass("UIListLayout") then
-			obj.LayoutOrder = #parent:GetChildren()
+			Util.set(obj, "LayoutOrder", #parent:GetChildren())
 		end
 	end
 	return obj
 end
 
 --- UICorner con radio fijo (0 = esquinas cuadradas).
+-- Si la versión de Roblox no tiene UICorner, se ignora sin romper nada.
 function Util.corner(obj, radius)
-	return Util.create("UICorner", { CornerRadius = UDim.new(0, radius or Config.CornerRadius) }, obj)
+	local ok, result = pcall(function()
+		return Util.create("UICorner", {
+			CornerRadius = UDim.new(0, radius or Config.CornerRadius),
+		}, obj)
+	end)
+	return ok and result or nil
 end
 
 -- Las instancias de Roblox no aceptan campos personalizados, así que las
@@ -228,14 +256,26 @@ function Util.setHit(obj, hit)
 end
 
 --- Borde fino.
+-- Si UIStroke no existe en esta versión, devuelve un objeto "virtual" (tabla Lua)
+-- de modo que cambiar su color más tarde siga funcionando sin errores.
 function Util.stroke(obj, color, thickness, transparency)
-	local s = Util.create("UIStroke", {
+	local ok, result = pcall(function()
+		return Util.create("UIStroke", {
+			Color = color or Config.Color.panelStroke,
+			Thickness = thickness or 1,
+			Transparency = transparency or 0,
+			ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+		}, obj)
+	end)
+	if ok and result then
+		return Util.setStroke(obj, result)
+	end
+	return Util.setStroke(obj, {
+		virtual = true,
 		Color = color or Config.Color.panelStroke,
 		Thickness = thickness or 1,
 		Transparency = transparency or 0,
-		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
-	}, obj)
-	return Util.setStroke(obj, s)
+	})
 end
 
 --- Padding por lados.
@@ -279,16 +319,23 @@ end
 
 --- Degradado vertical reutilizable (paneles, campos y botones).
 function Util.gradient(obj, top, bottom, mid)
-	obj.BackgroundColor3 = mid or top
+	Util.set(obj, "BackgroundColor3", mid or top)
 	local stops = {
 		ColorSequenceKeypoint.new(0, top),
 		ColorSequenceKeypoint.new(0.52, mid or top),
 		ColorSequenceKeypoint.new(1, bottom),
 	}
-	return Util.create("UIGradient", {
-		Rotation = 90,
-		Color = ColorSequence.new(stops),
-	}, obj)
+	local ok, result = pcall(function()
+		return Util.create("UIGradient", {
+			Rotation = 90,
+			Color = ColorSequence.new(stops),
+		}, obj)
+	end)
+	if ok and result then
+		return result
+	end
+	-- sin UIGradient: queda el color plano intermedio
+	return { virtual = true, Color = ColorSequence.new(stops) }
 end
 
 --- Tween corto y sobrio (sin animaciones llamativas).
@@ -610,9 +657,9 @@ function Icons.build(parent, kind, size)
 	function icon.setColor(fn)
 		for _, obj in ipairs(icon.solid) do
 			if obj.ClassName == "UIStroke" then
-				obj.Color = fn()
+				Util.set(obj, "Color", fn())
 			else
-				obj.BackgroundColor3 = fn()
+				Util.set(obj, "BackgroundColor3", fn())
 			end
 		end
 	end
@@ -620,7 +667,7 @@ function Icons.build(parent, kind, size)
 	function icon.setKnock(color)
 		icon.knockColor = color
 		for _, obj in ipairs(icon.knock) do
-			obj.BackgroundColor3 = color
+			Util.set(obj, "BackgroundColor3", color)
 		end
 	end
 
@@ -663,13 +710,13 @@ function State.applyAccent(color)
 				c = Color3.new(color.R * binding.alpha, color.G * binding.alpha, color.B * binding.alpha)
 			end
 			if binding.kind == "bg" then
-				obj.BackgroundColor3 = c
+				Util.set(obj, "BackgroundColor3", c)
 			elseif binding.kind == "text" then
-				obj.TextColor3 = c
+				Util.set(obj, "TextColor3", c)
 			elseif binding.kind == "stroke" then
 				local strokeObj = Util.getStroke(obj)
 				if strokeObj then
-					strokeObj.Color = c
+					Util.set(strokeObj, "Color", c)
 				end
 			end
 		end
@@ -739,7 +786,7 @@ function Components.Panel(parent, title, options)
 		LayoutOrder = 2,
 	}, panel)
 	local list = Util.list(body, options.gap or Config.RowGap)
-	list.HorizontalAlignment = Enum.HorizontalAlignment.Left
+	Util.set(list, "HorizontalAlignment", Enum.HorizontalAlignment.Left)
 
 	return body, panel
 end
@@ -760,12 +807,12 @@ local function createRow(parent, height, interactive)
 			Text = "",
 			AutoButtonColor = false,
 		}, row)
-		hit.CursorIcon = "PointingHand"
+		Util.set(hit, "CursorIcon", "PointingHand")
 		Util.connect(hit.MouseEnter, function()
-			row.BackgroundTransparency = 0
+			Util.set(row, "BackgroundTransparency", 0)
 		end)
 		Util.connect(hit.MouseLeave, function()
-			row.BackgroundTransparency = 1
+			Util.set(row, "BackgroundTransparency", 1)
 		end)
 		Util.setHit(row, hit)
 	end
@@ -801,18 +848,18 @@ local function makeKeyCapture(row, options)
 		AutoButtonColor = false,
 		ZIndex = 6,
 	}, row)
-	hit.CursorIcon = "PointingHand"
+	Util.set(hit, "CursorIcon", "PointingHand")
 
 	local function render()
 		if capturing then
-			keyLabel.Text = "[...]"
-			keyLabel.TextColor3 = State.Accent
+			Util.set(keyLabel, "Text", "[...]")
+			Util.set(keyLabel, "TextColor3", State.Accent)
 		elseif current then
-			keyLabel.Text = "[" .. Util.keyName(current) .. "]"
-			keyLabel.TextColor3 = Config.Color.text
+			Util.set(keyLabel, "Text", "[" .. Util.keyName(current) .. "]")
+			Util.set(keyLabel, "TextColor3", Config.Color.text)
 		else
-			keyLabel.Text = "[ ]"
-			keyLabel.TextColor3 = Config.Color.textFaint
+			Util.set(keyLabel, "Text", "[ ]")
+			Util.set(keyLabel, "TextColor3", Config.Color.textFaint)
 		end
 	end
 
@@ -932,8 +979,8 @@ function Components.Toggle(parent, options)
 	local value = options.default == true
 
 	local function render()
-		box.BackgroundColor3 = value and State.Accent or Config.Color.checkOff
-		boxStroke.Color = value and State.Accent or Config.Color.checkStroke
+		Util.set(box, "BackgroundColor3", value and State.Accent or Config.Color.checkOff)
+		Util.set(boxStroke, "Color", value and State.Accent or Config.Color.checkStroke)
 	end
 
 	local function set(v, silent)
@@ -953,8 +1000,8 @@ function Components.Toggle(parent, options)
 	-- el checkbox activo sigue el color de acento
 	State.onAccentChange(function(color)
 		if value then
-			box.BackgroundColor3 = color
-			boxStroke.Color = color
+			Util.set(box, "BackgroundColor3", color)
+			Util.set(boxStroke, "Color", color)
 		end
 	end)
 
@@ -1032,7 +1079,7 @@ function Components.Slider(parent, options)
 		Text = "",
 		AutoButtonColor = false,
 	}, wrap)
-	hit.CursorIcon = "PointingHand"
+	Util.set(hit, "CursorIcon", "PointingHand")
 
 	local function format(v)
 		if decimals > 0 then
@@ -1043,8 +1090,8 @@ function Components.Slider(parent, options)
 
 	local function render()
 		local alpha = (max > min) and ((value - min) / (max - min)) or 0
-		fill.Size = UDim2.fromScale(alpha, 1)
-		valueLabel.Text = format(value)
+		Util.set(fill, "Size", UDim2.fromScale(alpha, 1))
+		Util.set(valueLabel, "Text", format(value))
 	end
 
 	local function applyFromX(mouseX)
@@ -1109,7 +1156,7 @@ function Components.Dropdown(parent, options)
 		BackgroundTransparency = 1,
 	}, parent)
 	local wrapList = Util.list(wrap, 2)
-	wrapList.HorizontalAlignment = Enum.HorizontalAlignment.Left
+	Util.set(wrapList, "HorizontalAlignment", Enum.HorizontalAlignment.Left)
 
 	if options.text then
 		Util.label(wrap, {
@@ -1169,14 +1216,14 @@ function Components.Dropdown(parent, options)
 
 	local function select(item, silent)
 		value = item
-		valueLabel.Text = tostring(item)
+		Util.set(valueLabel, "Text", tostring(item))
 		for option, button in pairs(buttons) do
 			if option == item then
-				button.BackgroundColor3 = Config.Color.menuItemHover
-				button.TextColor3 = State.Accent
+				Util.set(button, "BackgroundColor3", Config.Color.menuItemHover)
+				Util.set(button, "TextColor3", State.Accent)
 			else
-				button.BackgroundColor3 = Config.Color.menuBg
-				button.TextColor3 = Config.Color.textDim
+				Util.set(button, "BackgroundColor3", Config.Color.menuBg)
+				Util.set(button, "TextColor3", Config.Color.textDim)
 			end
 		end
 		State.setFlag(flag, item, silent)
@@ -1199,25 +1246,25 @@ function Components.Dropdown(parent, options)
 			LayoutOrder = index,
 		}, menu)
 		Util.corner(option, 0)
-		option.TextTruncate = Enum.TextTruncate.AtEnd
+		Util.set(option, "TextTruncate", Enum.TextTruncate.AtEnd)
 		Util.create("UIPadding", { PaddingLeft = UDim.new(0, 6) }, option)
 		buttons[item] = option
 
 		Util.connect(option.MouseEnter, function()
 			if item ~= value then
-				option.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-				option.TextColor3 = Color3.fromRGB(216, 216, 218)
+				Util.set(option, "BackgroundColor3", Color3.fromRGB(30, 30, 30))
+				Util.set(option, "TextColor3", Color3.fromRGB(216, 216, 218))
 			end
 		end)
 		Util.connect(option.MouseLeave, function()
 			if item ~= value then
-				option.BackgroundColor3 = Config.Color.menuBg
-				option.TextColor3 = Config.Color.textDim
+				Util.set(option, "BackgroundColor3", Config.Color.menuBg)
+				Util.set(option, "TextColor3", Config.Color.textDim)
 			end
 		end)
 		Util.connect(option.MouseButton1Click, function()
 			select(item)
-			menu.Visible = false
+			Util.set(menu, "Visible", false)
 		end)
 	end
 
@@ -1227,26 +1274,26 @@ function Components.Dropdown(parent, options)
 		Text = "",
 		AutoButtonColor = false,
 	}, header)
-	hit.CursorIcon = "PointingHand"
+	Util.set(hit, "CursorIcon", "PointingHand")
 
 	Util.connect(hit.MouseEnter, function()
-		boxGradient.Color = ColorSequence.new({
-			ColorSequenceKeypoint.new(0, Config.Color.fieldHoverTop),
-			ColorSequenceKeypoint.new(0.52, Config.Color.fieldMid),
-			ColorSequenceKeypoint.new(1, Config.Color.fieldBottom),
-		})
-		boxStroke.Color = Color3.fromRGB(56, 56, 56)
+		Util.set(boxGradient, "Color", ColorSequence.new({
+				ColorSequenceKeypoint.new(0, Config.Color.fieldHoverTop),
+				ColorSequenceKeypoint.new(0.52, Config.Color.fieldMid),
+				ColorSequenceKeypoint.new(1, Config.Color.fieldBottom)
+			}))
+		Util.set(boxStroke, "Color", Color3.fromRGB(56, 56, 56))
 	end)
 	Util.connect(hit.MouseLeave, function()
-		boxGradient.Color = ColorSequence.new({
-			ColorSequenceKeypoint.new(0, Config.Color.fieldTop),
-			ColorSequenceKeypoint.new(0.52, Config.Color.fieldMid),
-			ColorSequenceKeypoint.new(1, Config.Color.fieldBottom),
-		})
-		boxStroke.Color = Config.Color.fieldStroke
+		Util.set(boxGradient, "Color", ColorSequence.new({
+				ColorSequenceKeypoint.new(0, Config.Color.fieldTop),
+				ColorSequenceKeypoint.new(0.52, Config.Color.fieldMid),
+				ColorSequenceKeypoint.new(1, Config.Color.fieldBottom)
+			}))
+		Util.set(boxStroke, "Color", Config.Color.fieldStroke)
 	end)
 	Util.connect(hit.MouseButton1Click, function()
-		menu.Visible = not menu.Visible
+		Util.set(menu, "Visible", not menu.Visible)
 	end)
 
 	if flag then
@@ -1311,23 +1358,23 @@ function Components.Button(parent, options)
 	Util.corner(button, Config.CornerRadius)
 	local stroke = Util.stroke(button, Config.Color.btnStroke, 1)
 	local gradient = Util.gradient(button, Config.Color.btnTop, Config.Color.btnBottom, Config.Color.btnMid)
-	button.CursorIcon = "PointingHand"
+	Util.set(button, "CursorIcon", "PointingHand")
 
 	Util.connect(button.MouseEnter, function()
-		gradient.Color = ColorSequence.new({
-			ColorSequenceKeypoint.new(0, Config.Color.btnHoverTop),
-			ColorSequenceKeypoint.new(0.52, Config.Color.btnMid),
-			ColorSequenceKeypoint.new(1, Config.Color.btnHoverBot),
-		})
-		stroke.Color = Color3.fromRGB(58, 58, 58)
+		Util.set(gradient, "Color", ColorSequence.new({
+				ColorSequenceKeypoint.new(0, Config.Color.btnHoverTop),
+				ColorSequenceKeypoint.new(0.52, Config.Color.btnMid),
+				ColorSequenceKeypoint.new(1, Config.Color.btnHoverBot)
+			}))
+		Util.set(stroke, "Color", Color3.fromRGB(58, 58, 58))
 	end)
 	Util.connect(button.MouseLeave, function()
-		gradient.Color = ColorSequence.new({
-			ColorSequenceKeypoint.new(0, Config.Color.btnTop),
-			ColorSequenceKeypoint.new(0.52, Config.Color.btnMid),
-			ColorSequenceKeypoint.new(1, Config.Color.btnBottom),
-		})
-		stroke.Color = Config.Color.btnStroke
+		Util.set(gradient, "Color", ColorSequence.new({
+				ColorSequenceKeypoint.new(0, Config.Color.btnTop),
+				ColorSequenceKeypoint.new(0.52, Config.Color.btnMid),
+				ColorSequenceKeypoint.new(1, Config.Color.btnBottom)
+			}))
+		Util.set(stroke, "Color", Config.Color.btnStroke)
 	end)
 	Util.connect(button.MouseButton1Click, function()
 		if options.callback then
@@ -1341,7 +1388,7 @@ function Components.Button(parent, options)
 	return {
 		Frame = button,
 		SetText = function(text)
-			button.Text = text
+			Util.set(button, "Text", text)
 		end,
 	}
 end
@@ -1487,7 +1534,9 @@ Util.corner(root, 0)
 Util.stroke(root, Config.Color.windowStroke, 1)
 Window.Root = root
 
-Util.create("UIScale", { Name = "Scale", Scale = 1 }, root)
+pcall(function()
+	Util.create("UIScale", { Name = "Scale", Scale = 1 }, root)
+end)
 
 -- ── 6.2 Barra arcoíris superior (2 px) ───────────────────────────────────────
 local rainbow = Util.create("Frame", {
@@ -1503,7 +1552,10 @@ do
 	for _, stop in ipairs(Config.Rainbow) do
 		keypoints[#keypoints + 1] = ColorSequenceKeypoint.new(stop[1], stop[2])
 	end
-	Util.create("UIGradient", { Color = ColorSequence.new(keypoints) }, rainbow)
+	-- la barra arcoíris tolera versiones sin UIGradient (queda el color base)
+	pcall(function()
+		Util.create("UIGradient", { Color = ColorSequence.new(keypoints) }, rainbow)
+	end)
 end
 
 -- ── 6.3 Sidebar ──────────────────────────────────────────────────────────────
@@ -1552,10 +1604,10 @@ do
 		if input.UserInputType == Enum.UserInputType.MouseMovement
 			or input.UserInputType == Enum.UserInputType.Touch then
 			local delta = input.Position - dragStart
-			root.Position = UDim2.new(
+			Util.set(root, "Position", UDim2.new(
 				startPos.X.Scale, startPos.X.Offset + delta.X,
 				startPos.Y.Scale, startPos.Y.Offset + delta.Y
-			)
+			))
 		end
 	end)
 	Util.connect(UserInput.InputEnded, function(input)
@@ -1618,10 +1670,10 @@ do
 		if input.UserInputType == Enum.UserInputType.MouseMovement
 			or input.UserInputType == Enum.UserInputType.Touch then
 			local delta = input.Position - dragStart
-			root.Position = UDim2.new(
+			Util.set(root, "Position", UDim2.new(
 				startPos.X.Scale, startPos.X.Offset + delta.X,
 				startPos.Y.Scale, startPos.Y.Offset + delta.Y
-			)
+			))
 		end
 	end)
 	Util.connect(UserInput.InputEnded, function(input)
@@ -1639,7 +1691,7 @@ local function fitScale()
 	local scale = math.min(1, math.min(viewport.X / (Config.WindowSize.X + 90), viewport.Y / (Config.WindowSize.Y + 80)))
 	local holder = root:FindFirstChild("Scale")
 	if holder then
-		holder.Scale = math.clamp(scale, 0.55, 1)
+		Util.set(holder, "Scale", math.clamp(scale, 0.55, 1))
 	end
 end
 fitScale()
@@ -1685,7 +1737,7 @@ function Window.AddTab(options)
 		ClipsDescendants = false,
 		LayoutOrder = #TAB_ORDER + 1,
 	}, tabHolder)
-	button.CursorIcon = "PointingHand"
+	Util.set(button, "CursorIcon", "PointingHand")
 
 	local indicator = Util.create("Frame", {
 		Name = "Indicator",
@@ -1702,13 +1754,13 @@ function Window.AddTab(options)
 
 	Util.connect(button.MouseEnter, function()
 		if Window.ActiveTab ~= name then
-			button.BackgroundColor3 = Config.Color.tabHover
+			Util.set(button, "BackgroundColor3", Config.Color.tabHover)
 			icon.setColor(function() return Config.Color.iconHover end)
 		end
 	end)
 	Util.connect(button.MouseLeave, function()
 		if Window.ActiveTab ~= name then
-			button.BackgroundColor3 = Config.Color.sidebar
+			Util.set(button, "BackgroundColor3", Config.Color.sidebar)
 			icon.setColor(function() return Config.Color.iconIdle end)
 		end
 	end)
@@ -1866,6 +1918,9 @@ end
 --==============================================================================
 -- 9. CONTENT · réplica del contenido de la vista previa
 --==============================================================================
+-- Toda la construcción va protegida: si el ejecutor rechaza algo inesperado se
+-- informa en consola en lugar de dejar la ventana a medio dibujar en silencio.
+local contentOk, contentErr = pcall(function()
 
 --- Crea el marco de dos columnas dentro de una página.
 local function twoColumns(page)
@@ -1926,7 +1981,7 @@ local function scrollPanel(parent, title)
 		BackgroundTransparency = 1,
 	}, scroll)
 	local list = Util.list(body, Config.RowGap)
-	list.HorizontalAlignment = Enum.HorizontalAlignment.Left
+	Util.set(list, "HorizontalAlignment", Enum.HorizontalAlignment.Left)
 
 	return body, scroll
 end
@@ -2121,8 +2176,8 @@ API.AddButton(otherBody, {
 API.AddButton(otherBody, {
 	text = "Reset menu layout",
 	callback = function()
-		root.Size = UDim2.fromOffset(Config.WindowSize.X, Config.WindowSize.Y)
-		root.Position = UDim2.fromScale(0.5, 0.5)
+		Util.set(root, "Size", UDim2.fromOffset(Config.WindowSize.X, Config.WindowSize.Y))
+		Util.set(root, "Position", UDim2.fromScale(0.5, 0.5))
 		Window.Notify("Layout restablecido")
 	end,
 })
@@ -2150,9 +2205,9 @@ API.AddButton(otherBody, {
 -- 2) Respaldo: cálculo con AbsoluteSize cuando UIFlexItem no existe.
 local flexApplied = pcall(function()
 	local flex = Instance.new("UIFlexItem", otherPanel)
-	flex.FlexMode = Enum.UIFlexMode.Fill
-	otherPanel.AutomaticSize = Enum.AutomaticSize.None
-	otherPanel.Size = UDim2.fromScale(1, 1)
+	Util.set(flex, "FlexMode", Enum.UIFlexMode.Fill)
+	Util.set(otherPanel, "AutomaticSize", Enum.AutomaticSize.None)
+	Util.set(otherPanel, "Size", UDim2.fromScale(1, 1))
 	return true
 end)
 
@@ -2169,8 +2224,8 @@ if not flexApplied then
 		end
 		local remaining = available - used - 6
 		if otherAutoHeight and remaining > 0 then
-			otherPanel.AutomaticSize = Enum.AutomaticSize.None
-			otherPanel.Size = UDim2.new(1, 0, 0, math.floor(remaining))
+			Util.set(otherPanel, "AutomaticSize", Enum.AutomaticSize.None)
+			Util.set(otherPanel, "Size", UDim2.new(1, 0, 0, math.floor(remaining)))
 			otherAutoHeight = false
 		end
 	end
@@ -2225,6 +2280,27 @@ end
 placeholderPage("Account", "person", "Account",
 	"El botón Unload destruye la interfaz y desconecta todas las señales.")
 
+end) -- fin de la construcción del contenido
+
+if not contentOk then
+	warn("[NeonMenu] error construyendo el contenido: " .. tostring(contentErr))
+end
+
+-- Resumen de lo creado (diagnóstico rápido en ejecutores restrictivos)
+do
+	local tabCount, controlCount = 0, 0
+	for _ in pairs(Window.Tabs) do
+		tabCount = tabCount + 1
+	end
+	for _ in pairs(State.Flags) do
+		controlCount = controlCount + 1
+	end
+	local accent = State.Accent
+	print(("[NeonMenu] %d pestañas · %d controles · acento RGB(%d,%d,%d)")
+		:format(tabCount, controlCount,
+			math.floor(accent.R * 255), math.floor(accent.G * 255), math.floor(accent.B * 255)))
+end
+
 --==============================================================================
 -- 10. BOOTSTRAP · tecla del menú, API pública y cierre
 --==============================================================================
@@ -2232,7 +2308,7 @@ placeholderPage("Account", "person", "Account",
 --- Abre o cierra la ventana.
 function Window.Open(open)
 	Window.IsOpen = open ~= false
-	root.Visible = Window.IsOpen
+	Util.set(root, "Visible", Window.IsOpen)
 end
 
 function Window.Toggle()
