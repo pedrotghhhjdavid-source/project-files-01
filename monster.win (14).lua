@@ -1,5 +1,5 @@
 --!nonstrict
--- NEON MENU · v2.1.1 · textos más claros · sin desbordes
+-- NEON MENU · v2.2.0 · tipografía legible · filas sin recortes
 --[[═══════════════════════════════════════════════════════════════════════════════
     N E O N   M E N U   ·   Luau (Roblox)   ·   v2 “GameSense”
    ───────────────────────────────────────────────────────────────────────────
@@ -45,7 +45,7 @@
 --==============================================================================
 local Config = {}
 
-Config.Version = "2.1.1"   -- contraste de textos + sin desbordes (TextSize entero)
+Config.Version = "2.2.0"   -- tipografía nativa nítida + alturas y espacios uniformes
 
 -- Tamaño de ventana y estructura
 Config.WindowSize     = Vector2.new(620, 540)
@@ -54,13 +54,13 @@ Config.RainbowHeight  = 2      -- barra arcoíris (2 px, discreta)
 Config.ContentPad     = { top = 6, left = 14, right = 10, bottom = 10 }
 Config.ColumnGap      = 12
 Config.PanelPad       = { top = 7, left = 9, right = 9, bottom = 8 }
-Config.RowHeight      = 15
+Config.RowHeight      = 20
 Config.RowGap         = 2
 Config.CornerRadius   = 0      -- esquinas prácticamente cuadradas
 Config.CheckSize      = 9
 Config.TrackHeight    = 3
-Config.FieldHeight    = 17     -- dropdowns
-Config.ButtonHeight   = 20
+Config.FieldHeight    = 22     -- dropdowns
+Config.ButtonHeight   = 24
 
 -- Paleta carbón
 Config.Color = {
@@ -73,26 +73,26 @@ Config.Color = {
 	panel         = Color3.fromRGB(25, 25, 25),   -- #191919
 	panelTop      = Color3.fromRGB(27, 27, 27),   -- #1b1b1b
 	panelBottom   = Color3.fromRGB(21, 21, 21),   -- #151515
-	panelStroke   = Color3.fromRGB(41, 41, 41),   -- #292929
+	panelStroke   = Color3.fromRGB(58, 58, 58),   -- #3a3a3a
 	fieldTop      = Color3.fromRGB(30, 30, 30),   -- #1e1e1e
 	fieldMid      = Color3.fromRGB(24, 24, 24),   -- #181818
 	fieldBottom   = Color3.fromRGB(21, 21, 21),   -- #151515
-	fieldStroke   = Color3.fromRGB(46, 46, 46),   -- #2e2e2e
+	fieldStroke   = Color3.fromRGB(64, 64, 64),   -- #404040
 	fieldHoverTop = Color3.fromRGB(36, 36, 36),
 	fieldHoverBot = Color3.fromRGB(26, 26, 26),
 	btnTop        = Color3.fromRGB(33, 33, 33),   -- #212121
 	btnMid        = Color3.fromRGB(26, 26, 26),   -- #1a1a1a
 	btnBottom     = Color3.fromRGB(22, 22, 22),   -- #161616
-	btnStroke     = Color3.fromRGB(47, 47, 47),   -- #2f2f2f
+	btnStroke     = Color3.fromRGB(66, 66, 66),   -- #424242
 	btnHoverTop   = Color3.fromRGB(41, 41, 41),
 	btnHoverBot   = Color3.fromRGB(28, 28, 28),
 	menuBg        = Color3.fromRGB(22, 22, 22),   -- #161616
 	menuStroke    = Color3.fromRGB(46, 46, 46),
 	menuItemHover = Color3.fromRGB(30, 30, 30),   -- #1e1e1e
 	rowHover      = Color3.fromRGB(28, 28, 28),   -- #1c1c1c
-	track         = Color3.fromRGB(38, 38, 38),   -- #262626
+	track         = Color3.fromRGB(58, 58, 58),   -- #3a3a3a
 	checkOff      = Color3.fromRGB(20, 20, 20),   -- #141414
-	checkStroke   = Color3.fromRGB(44, 44, 44),   -- #2c2c2c
+	checkStroke   = Color3.fromRGB(88, 88, 88),   -- #585858
 	scrollThumb   = Color3.fromRGB(52, 52, 52),   -- #343434
 	scrollTrack   = Color3.fromRGB(20, 20, 20),
 	text          = Color3.fromRGB(228, 228, 231),-- #e4e4e7
@@ -116,11 +116,12 @@ Config.Rainbow = {
 	{ 1.00, Color3.fromRGB(122, 47, 196) },
 }
 
--- Tipografía: sans neutra y compacta, con variantes en negrita
+-- SourceSans: fuente nativa de Roblox, mejor rasterizada que Gotham a 11 px.
+-- No usar TextScaled ni escalas fraccionarias innecesarias: vuelven borroso el texto.
 Config.Font = {
-	regular = Enum.Font.Gotham,
-	medium  = Enum.Font.GothamMedium,
-	bold    = Enum.Font.GothamBold,
+	regular = Enum.Font.SourceSans,
+	medium  = Enum.Font.SourceSansSemibold,
+	bold    = Enum.Font.SourceSansBold,
 }
 
 -- Acentos seleccionables (swatch "Menu color")
@@ -314,7 +315,7 @@ function Util.label(parent, props)
 	local base = {
 		BackgroundTransparency = 1,
 		Font = Config.Font.regular,
-		TextSize = 11,
+		TextSize = 13,
 		TextColor3 = Config.Color.text,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextYAlignment = Enum.TextYAlignment.Center,
@@ -322,6 +323,13 @@ function Util.label(parent, props)
 	}
 	for key, value in pairs(props or {}) do
 		base[key] = value
+	end
+	-- La etiqueta no agranda ni reduce la fuente según el tamaño del contenedor:
+	-- TextScaled en Roblox puede difuminar glifos y hacer que unos textos difieran.
+	base.TextScaled = false
+	base.TextSize = math.floor((tonumber(base.TextSize) or 13) + 0.5)
+	if base.TextWrapped ~= true then
+		base.TextWrapped = false
 	end
 	return Util.create("TextLabel", base, parent)
 end
@@ -811,9 +819,9 @@ function Components.Panel(parent, title, options)
 		Util.label(panel, {
 			Text = title,
 			Font = Config.Font.bold,
-			TextSize = 12,
+			TextSize = 14,
 			TextColor3 = Config.Color.textTitle,
-			Size = UDim2.new(1, 0, 0, 14),
+			Size = UDim2.new(1, 0, 0, 18),
 			LayoutOrder = 1,
 		})
 	end
@@ -871,8 +879,8 @@ local function makeKeyCapture(row, options)
 
 	local keyLabel = Util.label(row, {
 		Text = "[ ]",
-		Font = Config.Font.bold,
-		TextSize = 10,
+		Font = Config.Font.medium,
+		TextSize = 12,
 		TextColor3 = Config.Color.textFaint,
 		Size = UDim2.new(0, keyWidth, 1, 0),
 		Position = UDim2.new(1, -keyWidth, 0, 0),
@@ -983,7 +991,10 @@ Components._makeKeyCapture = makeKeyCapture
 function Components.Toggle(parent, options)
 	options = options or {}
 	local flag   = options.flag
-	local height = options.height or Config.RowHeight
+	local hasKeybind = options.keyFlag ~= nil or options.keybind == true
+	-- Una etiqueta larga con tecla necesita dos líneas, no recortarse.
+	local longLabel = hasKeybind and #(options.text or "") > 21
+	local height = options.height or (longLabel and 34 or Config.RowHeight)
 	local row    = createRow(parent, height, true)
 
 	local box = Util.create("Frame", {
@@ -996,14 +1007,13 @@ function Components.Toggle(parent, options)
 	Util.corner(box, 0)
 	local boxStroke = Util.stroke(box, Config.Color.checkStroke, 1)
 
-	local hasKeybind = options.keyFlag ~= nil or options.keybind == true
-
 	Util.label(row, {
 		Text = options.text or "Toggle",
-		TextSize = 11,
+		TextSize = 13,
 		TextColor3 = Config.Color.text,
 		Position = UDim2.fromOffset(Config.CheckSize + 7, 0),
 		Size = UDim2.new(1, -(Config.CheckSize + 7) - (hasKeybind and 44 or 0), 1, 0),
+		TextWrapped = longLabel,
 	})
 
 	local keyCapture
@@ -1011,7 +1021,7 @@ function Components.Toggle(parent, options)
 		keyCapture = makeKeyCapture(row, {
 			flag = options.keyFlag,
 			width = 42,
-			height = Config.RowHeight,
+			height = height,
 			callback = options.onKeyCapture,
 		})
 	end
@@ -1069,18 +1079,18 @@ function Components.Slider(parent, options)
 	local value     = math.clamp(options.default or min, min, max)
 
 	local wrap = Util.create("Frame", {
-		Size = UDim2.new(1, 0, 0, 22),
+		Size = UDim2.new(1, 0, 0, 28),
 		BackgroundTransparency = 1,
 	}, parent)
 
 	local head = Util.create("Frame", {
-		Size = UDim2.new(1, 0, 0, 13),
+		Size = UDim2.new(1, 0, 0, 18),
 		BackgroundTransparency = 1,
 	}, wrap)
 
 	Util.label(head, {
 		Text = options.text or "Slider",
-		TextSize = 11,
+		TextSize = 13,
 		TextColor3 = Config.Color.text,
 		Size = UDim2.new(1, -44, 1, 0),
 	})
@@ -1088,9 +1098,9 @@ function Components.Slider(parent, options)
 	local valueLabel = Util.label(head, {
 		Text = "0",
 		Font = Config.Font.bold,
-		TextSize = 10,
+		TextSize = 12,
 		TextColor3 = State.Accent,
-		Size = UDim2.fromOffset(44, 14),
+		Size = UDim2.new(0, 44, 1, 0),
 		Position = UDim2.new(1, -44, 0, 0),
 		TextXAlignment = Enum.TextXAlignment.Right,
 	})
@@ -1098,7 +1108,7 @@ function Components.Slider(parent, options)
 
 	local track = Util.create("Frame", {
 		Size = UDim2.new(1, 0, 0, Config.TrackHeight),
-		Position = UDim2.fromOffset(0, 16),
+		Position = UDim2.fromOffset(0, 22),
 		BackgroundColor3 = Config.Color.track,
 		BorderSizePixel = 0,
 	}, wrap)
@@ -1113,8 +1123,8 @@ function Components.Slider(parent, options)
 	State.bindAccent(fill, "bg")
 
 	local hit = Util.create("TextButton", {
-		Size = UDim2.new(1, 0, 0, 13),
-		Position = UDim2.fromOffset(0, 9),
+		Size = UDim2.new(1, 0, 0, 14),
+		Position = UDim2.fromOffset(0, 14),
 		BackgroundTransparency = 1,
 		Text = "",
 		AutoButtonColor = false,
@@ -1201,9 +1211,9 @@ function Components.Dropdown(parent, options)
 	if options.text then
 		Util.label(wrap, {
 			Text = options.text,
-			TextSize = 11,
+			TextSize = 13,
 			TextColor3 = Config.Color.textDim,
-			Size = UDim2.new(1, 0, 0, 11),
+			Size = UDim2.new(1, 0, 0, 18),
 		})
 	end
 
@@ -1223,7 +1233,7 @@ function Components.Dropdown(parent, options)
 
 	local valueLabel = Util.label(box, {
 		Text = tostring(value),
-		TextSize = 11,
+		TextSize = 13,
 		TextColor3 = Config.Color.text,
 		Position = UDim2.fromOffset(6, 0),
 		Size = UDim2.new(1, -20, 1, 0),
@@ -1231,7 +1241,7 @@ function Components.Dropdown(parent, options)
 	Util.label(box, {
 		Text = "v",
 		Font = Config.Font.bold,
-		TextSize = 8,
+		TextSize = 11,
 		TextColor3 = Config.Color.textFaint,
 		Size = UDim2.fromOffset(14, Config.FieldHeight),
 		Position = UDim2.new(1, -16, 0, 0),
@@ -1274,12 +1284,12 @@ function Components.Dropdown(parent, options)
 
 	for index, item in ipairs(items) do
 		local option = Util.create("TextButton", {
-			Size = UDim2.new(1, 0, 0, 17),
+			Size = UDim2.new(1, 0, 0, 22),
 			BackgroundColor3 = (item == value) and Config.Color.menuItemHover or Config.Color.menuBg,
 			BorderSizePixel = 0,
 			Text = tostring(item),
 			Font = Config.Font.regular,
-			TextSize = 11,
+			TextSize = 13,
 			TextColor3 = (item == value) and State.Accent or Config.Color.textDim,
 			TextXAlignment = Enum.TextXAlignment.Left,
 			AutoButtonColor = false,
@@ -1355,7 +1365,7 @@ function Components.Keybind(parent, options)
 	if (options.text or "") ~= "" then
 		Util.label(row, {
 			Text = options.text,
-			TextSize = 11,
+			TextSize = 13,
 			TextColor3 = Config.Color.text,
 			Size = UDim2.new(1, -44, 1, 0),
 		})
@@ -1391,8 +1401,9 @@ function Components.Button(parent, options)
 		BorderSizePixel = 0,
 		Text = options.text or "Button",
 		Font = Config.Font.medium,
-		TextSize = 11,
-		TextColor3 = Color3.fromRGB(208, 208, 211),
+		TextSize = 13,
+		TextColor3 = Config.Color.textButton,
+		TextScaled = false,
 		AutoButtonColor = false,
 	}, parent)
 	Util.corner(button, Config.CornerRadius)
@@ -1439,7 +1450,7 @@ function Components.LabelRow(parent, options)
 	local row = createRow(parent, options.height or Config.RowHeight, options.interactive == true)
 	Util.label(row, {
 		Text = options.text or "",
-		TextSize = 11,
+		TextSize = 13,
 		TextColor3 = options.dim and Config.Color.textDim or Config.Color.text,
 		Size = UDim2.new(1, -(options.rightWidth or 0), 1, 0),
 	})
@@ -1447,9 +1458,9 @@ function Components.LabelRow(parent, options)
 		Util.label(row, {
 			Text = options.rightText,
 			Font = Config.Font.bold,
-			TextSize = 10,
+			TextSize = 12,
 			TextColor3 = Config.Color.textFaint,
-			Size = UDim2.fromOffset(options.rightWidth or 40, Config.RowHeight),
+			Size = UDim2.new(0, options.rightWidth or 40, 1, 0),
 			Position = UDim2.new(1, -(options.rightWidth or 40), 0, 0),
 			TextXAlignment = Enum.TextXAlignment.Right,
 		})
@@ -1463,7 +1474,7 @@ function Components.ColorRow(parent, options)
 	local row = createRow(parent, options.height or Config.RowHeight, true)
 	Util.label(row, {
 		Text = options.text or "Menu color",
-		TextSize = 11,
+		TextSize = 13,
 		TextColor3 = Config.Color.text,
 		Size = UDim2.new(1, -34, 1, 0),
 	})
@@ -1485,9 +1496,9 @@ function Components.SubTitle(parent, text)
 	return Util.label(parent, {
 		Text = text,
 		Font = Config.Font.bold,
-		TextSize = 11,
+		TextSize = 13,
 		TextColor3 = Config.Color.textTitle,
-		Size = UDim2.new(1, 0, 0, 14),
+		Size = UDim2.new(1, 0, 0, 18),
 	})
 end
 
@@ -1495,7 +1506,7 @@ end
 function Components.Note(parent, text, height)
 	return Util.label(parent, {
 		Text = text,
-		TextSize = 11,
+		TextSize = 13,
 		TextColor3 = Config.Color.textDim,
 		TextWrapped = true,
 		TextYAlignment = Enum.TextYAlignment.Top,
@@ -1731,7 +1742,10 @@ local function fitScale()
 	local scale = math.min(1, math.min(viewport.X / (Config.WindowSize.X + 90), viewport.Y / (Config.WindowSize.Y + 80)))
 	local holder = root:FindFirstChild("Scale")
 	if holder then
-		Util.set(holder, "Scale", math.clamp(scale, 0.55, 1))
+		-- A 1:1, Roblox dibuja el texto en píxeles enteros. Solo se escala
+		-- para pantallas que de verdad no caben; pasos estables de 1/4.
+		local fitted = (scale >= 1) and 1 or math.max(0.5, math.floor(scale * 4) / 4)
+		Util.set(holder, "Scale", fitted)
 	end
 end
 fitScale()
@@ -1865,7 +1879,7 @@ function Window.Notify(text, duration)
 
 	Util.label(card, {
 		Text = tostring(text),
-		TextSize = 11,
+		TextSize = 13,
 		TextColor3 = Config.Color.text,
 		Position = UDim2.fromOffset(9, 0),
 		Size = UDim2.new(1, -16, 1, 0),
@@ -1996,14 +2010,14 @@ local function scrollPanel(parent, title)
 	Util.label(panel, {
 		Text = title,
 		Font = Config.Font.bold,
-		TextSize = 12,
+		TextSize = 14,
 		TextColor3 = Config.Color.textTitle,
-		Size = UDim2.new(1, 0, 0, 15),
+		Size = UDim2.new(1, 0, 0, 20),
 	})
 
 	local scroll = Util.create("ScrollingFrame", {
-		Size = UDim2.new(1, 0, 1, -20),
-		Position = UDim2.fromOffset(0, 20),
+		Size = UDim2.new(1, 0, 1, -24),
+		Position = UDim2.fromOffset(0, 24),
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		CanvasSize = UDim2.new(0, 0, 0, 0),
@@ -2016,12 +2030,24 @@ local function scrollPanel(parent, title)
 	Util.list(scroll, Config.RowGap)
 
 	local body = Util.create("Frame", {
-		Size = UDim2.new(1, 0, 0, 0),
+		Size = UDim2.new(1, -5, 0, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
 		BackgroundTransparency = 1,
 	}, scroll)
 	local list = Util.list(body, Config.RowGap)
 	Util.set(list, "HorizontalAlignment", Enum.HorizontalAlignment.Left)
+
+	-- En ejecutores sin AutomaticCanvasSize, mantener el scroll funcional.
+	local function updateCanvas()
+		if body.Parent then
+			local h = body.AbsoluteSize.Y
+			if h and h > 0 then
+				Util.set(scroll, "CanvasSize", UDim2.fromOffset(0, math.ceil(h) + 2))
+			end
+		end
+	end
+	Util.connect(body:GetPropertyChangedSignal("AbsoluteSize"), updateCanvas)
+	task.defer(updateCanvas)
 
 	return body, scroll
 end
