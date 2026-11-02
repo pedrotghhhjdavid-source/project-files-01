@@ -45,64 +45,66 @@
 --==============================================================================
 local Config = {}
 
-Config.Version = "2.2.0"   -- tipografía nativa nítida + alturas y espacios uniformes
+Config.Version = "3.0.0"   -- réplica medida de la referencia (GameSense)
 
--- Tamaño de ventana y estructura
-Config.WindowSize     = Vector2.new(620, 540)
-Config.SidebarWidth   = 74
-Config.RainbowHeight  = 2      -- barra arcoíris (2 px, discreta)
-Config.ContentPad     = { top = 6, left = 14, right = 10, bottom = 10 }
-Config.ColumnGap      = 12
-Config.PanelPad       = { top = 7, left = 9, right = 9, bottom = 8 }
-Config.RowHeight      = 20
-Config.RowGap         = 2
-Config.CornerRadius   = 0      -- esquinas prácticamente cuadradas
-Config.CheckSize      = 9
-Config.TrackHeight    = 3
-Config.FieldHeight    = 22     -- dropdowns
-Config.ButtonHeight   = 24
+-- Geometría medida píxel a píxel sobre la captura de referencia (656 x 552)
+--   ventana 656x552 · sidebar 73 + 1 de separador · panel 256 · hueco 21
+--   márgenes del contenido: 24 izquierda, 25 derecha, 22 arriba, 23 abajo
+Config.WindowSize   = Vector2.new(656, 552)
+Config.SidebarWidth = 74
+Config.RainbowHeight = 4
+Config.ContentPad   = { top = 22, left = 24, right = 25, bottom = 23 }
+Config.PanelWidth   = 256
+Config.PanelGap     = 21
+Config.PanelPad     = { top = 18, left = 0, right = 0, bottom = 10 }
+Config.RowPitch     = 18      -- ritmo vertical de las filas
+Config.RowGap       = 0
+Config.CheckInset   = 22      -- checkbox respecto al borde del panel
+Config.FieldInset   = 42      -- sliders, dropdowns y botones
+Config.RightInset   = 58      -- margen derecho de los campos (ancho útil 156)
+Config.CheckSize    = 6       -- checkbox cuadrado diminuto
+Config.TrackHeight  = 8       -- pista del slider
+Config.FieldHeight  = 20      -- dropdown
+Config.ButtonHeight = 23      -- botón
+Config.ButtonGap    = 10
+Config.CornerRadius = 0
+Config.TitleOverlap = 6       -- el título se monta sobre el borde superior
 
--- Paleta carbón
+-- Paleta medida en la referencia
 Config.Color = {
-	window        = Color3.fromRGB(17, 17, 17),   -- #111111
-	windowStroke  = Color3.fromRGB(42, 42, 42),   -- #2a2a2a
-	sidebar       = Color3.fromRGB(14, 14, 14),   -- #0e0e0e
-	sidebarStroke = Color3.fromRGB(36, 36, 36),   -- #242424
-	tabActive     = Color3.fromRGB(21, 21, 21),   -- #151515
+	window        = Color3.fromRGB(11, 11, 11),
+	windowStroke  = Color3.fromRGB(44, 44, 44),
+	sidebar       = Color3.fromRGB(11, 11, 11),
+	sidebarStroke = Color3.fromRGB(34, 34, 34),
+	tabActive     = Color3.fromRGB(20, 20, 20),
+	tabStroke     = Color3.fromRGB(40, 40, 40),
 	tabHover      = Color3.fromRGB(20, 20, 20),
-	panel         = Color3.fromRGB(25, 25, 25),   -- #191919
-	panelTop      = Color3.fromRGB(27, 27, 27),   -- #1b1b1b
-	panelBottom   = Color3.fromRGB(21, 21, 21),   -- #151515
-	panelStroke   = Color3.fromRGB(58, 58, 58),   -- #3a3a3a
-	fieldTop      = Color3.fromRGB(30, 30, 30),   -- #1e1e1e
-	fieldMid      = Color3.fromRGB(24, 24, 24),   -- #181818
-	fieldBottom   = Color3.fromRGB(21, 21, 21),   -- #151515
-	fieldStroke   = Color3.fromRGB(64, 64, 64),   -- #404040
-	fieldHoverTop = Color3.fromRGB(36, 36, 36),
-	fieldHoverBot = Color3.fromRGB(26, 26, 26),
-	btnTop        = Color3.fromRGB(33, 33, 33),   -- #212121
-	btnMid        = Color3.fromRGB(26, 26, 26),   -- #1a1a1a
-	btnBottom     = Color3.fromRGB(22, 22, 22),   -- #161616
-	btnStroke     = Color3.fromRGB(66, 66, 66),   -- #424242
-	btnHoverTop   = Color3.fromRGB(41, 41, 41),
-	btnHoverBot   = Color3.fromRGB(28, 28, 28),
-	menuBg        = Color3.fromRGB(22, 22, 22),   -- #161616
-	menuStroke    = Color3.fromRGB(46, 46, 46),
-	menuItemHover = Color3.fromRGB(30, 30, 30),   -- #1e1e1e
-	rowHover      = Color3.fromRGB(28, 28, 28),   -- #1c1c1c
-	track         = Color3.fromRGB(58, 58, 58),   -- #3a3a3a
-	checkOff      = Color3.fromRGB(20, 20, 20),   -- #141414
-	checkStroke   = Color3.fromRGB(88, 88, 88),   -- #585858
-	scrollThumb   = Color3.fromRGB(52, 52, 52),   -- #343434
+	panel         = Color3.fromRGB(23, 23, 23),
+	panelStroke   = Color3.fromRGB(48, 48, 48),
+	fieldTop      = Color3.fromRGB(38, 38, 38),
+	fieldBottom   = Color3.fromRGB(26, 26, 26),
+	fieldMid      = Color3.fromRGB(32, 32, 32),
+	fieldStroke   = Color3.fromRGB(52, 52, 52),
+	fieldHoverTop = Color3.fromRGB(46, 46, 46),
+	fieldHoverBot = Color3.fromRGB(32, 32, 32),
+	menuBg        = Color3.fromRGB(24, 24, 24),
+	menuStroke    = Color3.fromRGB(52, 52, 52),
+	menuItemHover = Color3.fromRGB(38, 38, 38),
+	rowHover      = Color3.fromRGB(31, 31, 31),
+	track         = Color3.fromRGB(62, 62, 62),
+	checkOff      = Color3.fromRGB(62, 62, 62),
+	checkStroke   = Color3.fromRGB(56, 56, 56),
+	scrollThumb   = Color3.fromRGB(58, 58, 58),
 	scrollTrack   = Color3.fromRGB(20, 20, 20),
-	text          = Color3.fromRGB(228, 228, 231),-- #e4e4e7
-	textTitle     = Color3.fromRGB(246, 246, 248),-- #f6f6f8
-	textDim       = Color3.fromRGB(172, 172, 178),-- #acacb2
-	textFaint     = Color3.fromRGB(146, 146, 152),-- #929298
-	textButton    = Color3.fromRGB(232, 232, 235),-- #e8e8eb
-	iconIdle      = Color3.fromRGB(142, 142, 147),-- #8e8e93
-	iconHover     = Color3.fromRGB(178, 178, 183),-- #b2b2b7
-	iconActive    = Color3.fromRGB(226, 226, 230),-- #e2e2e6
+	text          = Color3.fromRGB(236, 236, 236),
+	textTitle     = Color3.fromRGB(242, 242, 242),
+	textDim       = Color3.fromRGB(184, 184, 188),
+	textFaint     = Color3.fromRGB(150, 150, 154),
+	textButton    = Color3.fromRGB(238, 238, 240),
+	textValue     = Color3.fromRGB(244, 244, 244),
+	iconIdle      = Color3.fromRGB(126, 126, 130),
+	iconHover     = Color3.fromRGB(168, 168, 172),
+	iconActive    = Color3.fromRGB(214, 214, 218),
 	white         = Color3.fromRGB(255, 255, 255),
 }
 
@@ -122,6 +124,14 @@ Config.Font = {
 	regular = Enum.Font.SourceSans,
 	medium  = Enum.Font.SourceSansSemibold,
 	bold    = Enum.Font.SourceSansBold,
+}
+
+Config.TextSize = {
+	body   = 12,
+	title  = 12,
+	value  = 12,
+	hint   = 11,
+	button = 12,
 }
 
 -- Acentos seleccionables (swatch "Menu color")
@@ -793,69 +803,92 @@ function State.setFlag(flag, value, silent)
 end
 
 --==============================================================================
--- 5. COMPONENTS · piezas visuales reutilizables
+-- 5. COMPONENTS · piezas visuales (geometría medida sobre la referencia)
 --==============================================================================
 local Components = {}
 
--- ── 5.1 Panel ────────────────────────────────────────────────────────────────
---- Panel rectangular con borde fino y degradado sutil. Devuelve (body, panel).
+-- Medidas derivadas de Config
+local ROW_PITCH   = Config.RowPitch
+local CHECK_INSET = Config.CheckInset
+local FIELD_INSET = Config.FieldInset
+local RIGHT_INSET = Config.RightInset
+local LABEL_INSET = CHECK_INSET + 19   -- 41 px, igual que en la captura
+
+--- Ancho de un campo (dropdown, slider, botón).
+local function fieldWidth()
+	return Config.PanelWidth - FIELD_INSET - RIGHT_INSET
+end
+
+-- ── 5.1 Panel con título montado sobre el borde superior ─────────────────────
+--- Devuelve (body, panel): dentro de body se apilan los controles.
 function Components.Panel(parent, title, options)
 	options = options or {}
 	local panel = Util.create("Frame", {
-		Size = options.size or UDim2.new(1, 0, 0, 0),
+		Name = "Panel",
+		Size = options.size or UDim2.new(0, Config.PanelWidth, 0, 0),
 		AutomaticSize = (options.autoSize == false) and Enum.AutomaticSize.None or Enum.AutomaticSize.Y,
 		BackgroundColor3 = Config.Color.panel,
 		BorderSizePixel = 0,
-		ClipsDescendants = options.clip == true,
 		LayoutOrder = options.order or 0,
+		ZIndex = 2,
 	}, parent)
 	Util.corner(panel, Config.CornerRadius)
 	Util.stroke(panel, Config.Color.panelStroke, 1)
-	Util.gradient(panel, Config.Color.panelTop, Config.Color.panelBottom, Config.Color.panel)
-	Util.pad(panel, Config.PanelPad)
-	Util.list(panel, 5)
+
+	-- cuerpo desplazado 16 px: deja sitio al título que rompe el borde
+	local body = Util.create("Frame", {
+		Name = "Body",
+		Size = UDim2.new(1, 0, 0, 0),
+		AutomaticSize = (options.autoSize == false) and Enum.AutomaticSize.None or Enum.AutomaticSize.Y,
+		BackgroundTransparency = 1,
+		ZIndex = 2,
+	}, panel)
+	Util.create("UIPadding", {
+		PaddingTop = UDim.new(0, Config.PanelPad.top),
+		PaddingBottom = UDim.new(0, Config.PanelPad.bottom),
+		PaddingLeft = UDim.new(0, 0),
+		PaddingRight = UDim.new(0, 0),
+	}, body)
+	Util.list(body, options.gap or 0, false, Enum.HorizontalAlignment.Left)
 
 	if title then
-		Util.label(panel, {
+		-- fondo del color de la ventana: "corta" el borde superior del panel
+		local titleLabel = Util.label(panel, {
 			Text = title,
 			Font = Config.Font.bold,
-			TextSize = 14,
+			TextSize = Config.TextSize.title,
 			TextColor3 = Config.Color.textTitle,
-			Size = UDim2.new(1, 0, 0, 18),
-			LayoutOrder = 1,
+			BackgroundColor3 = Config.Color.window,
+			BackgroundTransparency = 0,
+			Size = UDim2.new(0, 0, 0, 12),
+			AutomaticSize = Enum.AutomaticSize.X,
+			Position = UDim2.new(0, 14, 0, -Config.TitleOverlap),
+			TextXAlignment = Enum.TextXAlignment.Left,
+			ZIndex = 6,
 		})
+		Util.pad(titleLabel, { top = 0, bottom = 0, left = 3, right = 3 })
 	end
-
-	local body = Util.create("Frame", {
-		Size = UDim2.new(1, 0, 0, 0),
-		AutomaticSize = Enum.AutomaticSize.Y,
-		BackgroundTransparency = 1,
-		LayoutOrder = 2,
-	}, panel)
-	local list = Util.list(body, options.gap or Config.RowGap)
-	Util.set(list, "HorizontalAlignment", Enum.HorizontalAlignment.Left)
 
 	return body, panel
 end
 
--- ── 5.2 Fila base ────────────────────────────────────────────────────────────
-local function createRow(parent, height, interactive)
+-- ── 5.2 Fila base (ritmo de 18 px) ──────────────────────────────────────────
+local function createRow(parent, height, interactive, inset)
 	local row = Util.create("Frame", {
-		Size = UDim2.new(1, 0, 0, height or Config.RowHeight),
+		Size = UDim2.new(1, 0, 0, height or ROW_PITCH),
 		BackgroundColor3 = Config.Color.rowHover,
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
-		ClipsDescendants = true,
 	}, parent)
-	Util.corner(row, 0)
+
 	if interactive then
 		local hit = Util.create("TextButton", {
-			Size = UDim2.fromScale(1, 1),
+			Size = UDim2.new(1, -(inset or CHECK_INSET), 1, 0),
+			Position = UDim2.new(0, inset or CHECK_INSET, 0, 0),
 			BackgroundTransparency = 1,
 			Text = "",
 			AutoButtonColor = false,
 		}, row)
-		Util.set(hit, "CursorIcon", "PointingHand")
 		Util.connect(hit.MouseEnter, function()
 			Util.set(row, "BackgroundTransparency", 0)
 		end)
@@ -867,48 +900,57 @@ local function createRow(parent, height, interactive)
 	return row
 end
 
--- ── 5.2b Captura de tecla reutilizable (fila o control inline) ──────────────
--- Crea la etiqueta "[ ]" alineada a la derecha del row y gestiona la captura.
+-- ── 5.2b Captura de tecla (etiqueta "[ ] · [F]" a la derecha) ───────────────
 local function makeKeyCapture(row, options)
 	options = options or {}
 	local flag = options.flag
 	local current = options.default or nil
 	local capturing = false
+	local keyWidth = options.width or 46
 
-	local keyWidth = options.width or 42
+	-- el corchete se ancla al borde derecho de la fila (6 px de margen)
+	local rightInset = options.rightInset or 6
 
 	local keyLabel = Util.label(row, {
-		Text = "[ ]",
-		Font = Config.Font.medium,
-		TextSize = 12,
+		Text = "[+]",
+		Font = Config.Font.regular,
+		TextSize = Config.TextSize.hint,
 		TextColor3 = Config.Color.textFaint,
 		Size = UDim2.new(0, keyWidth, 1, 0),
-		Position = UDim2.new(1, -keyWidth, 0, 0),
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -rightInset, 0, 0),
 		TextXAlignment = Enum.TextXAlignment.Right,
 		ZIndex = 5,
 	})
 
 	local hit = Util.create("TextButton", {
-		Size = UDim2.new(0, keyWidth, 1, 0),
-		Position = UDim2.new(1, -keyWidth, 0, 0),
+		Size = UDim2.new(0, keyWidth + 8, 1, 0),
+		AnchorPoint = Vector2.new(1, 0),
+		Position = UDim2.new(1, -rightInset, 0, 0),
 		BackgroundTransparency = 1,
 		Text = "",
 		AutoButtonColor = false,
 		ZIndex = 6,
 	}, row)
-	Util.set(hit, "CursorIcon", "PointingHand")
 
 	local function render()
 		if capturing then
-			Util.set(keyLabel, "Text", "[...]")
-			Util.set(keyLabel, "TextColor3", State.Accent)
+			keyLabel.Text = "[...]"
+			keyLabel.TextColor3 = State.Accent
 		elseif current then
-			Util.set(keyLabel, "Text", "[" .. Util.keyName(current) .. "]")
-			Util.set(keyLabel, "TextColor3", Config.Color.text)
+			keyLabel.Text = "[" .. Util.keyName(current) .. "]"
+			keyLabel.TextColor3 = Config.Color.text
 		else
-			Util.set(keyLabel, "Text", "[ ]")
-			Util.set(keyLabel, "TextColor3", Config.Color.textFaint)
+			keyLabel.Text = "[+]"
+			keyLabel.TextColor3 = Config.Color.textFaint
 		end
+	end
+
+	local function startCapture()
+		capturing = true
+		State.CapturingKey = true
+		current = nil
+		render()
 	end
 
 	local function stopCapture()
@@ -947,13 +989,6 @@ local function makeKeyCapture(row, options)
 		end
 	end)
 
-	local function startCapture()
-		capturing = true
-		State.CapturingKey = true
-		current = nil
-		render()
-	end
-
 	Util.connect(hit.MouseButton1Click, function()
 		if capturing then
 			stopCapture()
@@ -987,41 +1022,41 @@ local function makeKeyCapture(row, options)
 end
 Components._makeKeyCapture = makeKeyCapture
 
--- ── 5.3 Toggle ───────────────────────────────────────────────────────────────
+-- ── 5.3 Toggle (checkbox de 6 px; magenta cuando está activo) ───────────────
 function Components.Toggle(parent, options)
 	options = options or {}
-	local flag   = options.flag
-	local hasKeybind = options.keyFlag ~= nil or options.keybind == true
-	-- Una etiqueta larga con tecla necesita dos líneas, no recortarse.
-	local longLabel = hasKeybind and #(options.text or "") > 21
-	local height = options.height or (longLabel and 34 or Config.RowHeight)
-	local row    = createRow(parent, height, true)
+	local flag = options.flag
+	local row = createRow(parent, options.height or ROW_PITCH, true, CHECK_INSET)
 
 	local box = Util.create("Frame", {
 		Size = UDim2.fromOffset(Config.CheckSize, Config.CheckSize),
-		Position = UDim2.new(0, 0, 0.5, 0),
+		Position = UDim2.new(0, CHECK_INSET, 0.5, 0),
 		AnchorPoint = Vector2.new(0, 0.5),
 		BackgroundColor3 = Config.Color.checkOff,
 		BorderSizePixel = 0,
+		ZIndex = 5,
 	}, row)
 	Util.corner(box, 0)
-	local boxStroke = Util.stroke(box, Config.Color.checkStroke, 1)
+
+	local hasKeybind = options.keyFlag ~= nil or options.keybind == true
+	local labelRight = hasKeybind and 52 or 0
 
 	Util.label(row, {
 		Text = options.text or "Toggle",
-		TextSize = 13,
-		TextColor3 = Config.Color.text,
-		Position = UDim2.fromOffset(Config.CheckSize + 7, 0),
-		Size = UDim2.new(1, -(Config.CheckSize + 7) - (hasKeybind and 44 or 0), 1, 0),
-		TextWrapped = longLabel,
+		Font = Config.Font.regular,
+		TextSize = Config.TextSize.body,
+		TextColor3 = Config.Color.textDim,
+		Position = UDim2.new(0, LABEL_INSET, 0, 0),
+		Size = UDim2.new(1, -(LABEL_INSET + labelRight + 4), 1, 0),
+		TextTruncate = Enum.TextTruncate.AtEnd,
+		ZIndex = 4,
 	})
 
 	local keyCapture
 	if hasKeybind then
 		keyCapture = makeKeyCapture(row, {
 			flag = options.keyFlag,
-			width = 42,
-			height = height,
+			width = 30,
 			callback = options.onKeyCapture,
 		})
 	end
@@ -1030,7 +1065,6 @@ function Components.Toggle(parent, options)
 
 	local function render()
 		Util.set(box, "BackgroundColor3", value and State.Accent or Config.Color.checkOff)
-		Util.set(boxStroke, "Color", value and State.Accent or Config.Color.checkStroke)
 	end
 
 	local function set(v, silent)
@@ -1046,12 +1080,9 @@ function Components.Toggle(parent, options)
 	if flag then
 		State.Flags[flag] = value
 	end
-
-	-- el checkbox activo sigue el color de acento
 	State.onAccentChange(function(color)
 		if value then
 			Util.set(box, "BackgroundColor3", color)
-			Util.set(boxStroke, "Color", color)
 		end
 	end)
 
@@ -1064,51 +1095,38 @@ function Components.Toggle(parent, options)
 		Get = function() return value end,
 		Row = row,
 		Keybind = keyCapture,
-		refreshAccent = render,
 	}
 end
 
--- ── 5.4 Slider ───────────────────────────────────────────────────────────────
+-- ── 5.4 Slider (pista de 6 px y valor en blanco sobre el extremo derecho) ───
 function Components.Slider(parent, options)
 	options = options or {}
-	local flag      = options.flag
-	local min       = options.min or 0
-	local max       = options.max or 100
-	local decimals  = options.decimals or 0
-	local suffix    = options.suffix or ""
-	local value     = math.clamp(options.default or min, min, max)
+	local flag = options.flag
+	local min = options.min or 0
+	local max = options.max or 100
+	local decimals = options.decimals or 0
+	local suffix = options.suffix or ""
+	local value = math.clamp(options.default or min, min, max)
 
 	local wrap = Util.create("Frame", {
-		Size = UDim2.new(1, 0, 0, 28),
+		Size = UDim2.new(1, 0, 0, ROW_PITCH + Config.TrackHeight + 4),
 		BackgroundTransparency = 1,
 	}, parent)
 
-	local head = Util.create("Frame", {
-		Size = UDim2.new(1, 0, 0, 18),
-		BackgroundTransparency = 1,
-	}, wrap)
-
-	Util.label(head, {
+	Util.label(wrap, {
 		Text = options.text or "Slider",
-		TextSize = 13,
+		Font = Config.Font.regular,
+		TextSize = Config.TextSize.body,
 		TextColor3 = Config.Color.text,
-		Size = UDim2.new(1, -44, 1, 0),
+		Position = UDim2.new(0, LABEL_INSET, 0, 0),
+		Size = UDim2.new(1, -(LABEL_INSET + RIGHT_INSET), 0, ROW_PITCH),
+		TextTruncate = Enum.TextTruncate.AtEnd,
 	})
 
-	local valueLabel = Util.label(head, {
-		Text = "0",
-		Font = Config.Font.bold,
-		TextSize = 12,
-		TextColor3 = State.Accent,
-		Size = UDim2.new(0, 44, 1, 0),
-		Position = UDim2.new(1, -44, 0, 0),
-		TextXAlignment = Enum.TextXAlignment.Right,
-	})
-	State.bindAccent(valueLabel, "text")
-
+	local trackY = ROW_PITCH
 	local track = Util.create("Frame", {
-		Size = UDim2.new(1, 0, 0, Config.TrackHeight),
-		Position = UDim2.fromOffset(0, 22),
+		Size = UDim2.new(0, fieldWidth(), 0, Config.TrackHeight),
+		Position = UDim2.new(0, FIELD_INSET, 0, trackY),
 		BackgroundColor3 = Config.Color.track,
 		BorderSizePixel = 0,
 	}, wrap)
@@ -1122,14 +1140,28 @@ function Components.Slider(parent, options)
 	Util.corner(fill, 0)
 	State.bindAccent(fill, "bg")
 
+	-- el valor se dibuja sobre la pista, siguiendo el extremo del relleno
+	local valueWidth = 46
+	local valueLabel = Util.label(wrap, {
+		Text = "0",
+		Font = Config.Font.bold,
+		TextSize = Config.TextSize.value,
+		TextColor3 = Config.Color.textValue,
+		Size = UDim2.new(0, valueWidth, 0, Config.TrackHeight + 2),
+		Position = UDim2.new(0, FIELD_INSET, 0, trackY - 1),
+		TextXAlignment = Enum.TextXAlignment.Center,
+		TextYAlignment = Enum.TextYAlignment.Center,
+		ZIndex = 6,
+	})
+
 	local hit = Util.create("TextButton", {
-		Size = UDim2.new(1, 0, 0, 14),
-		Position = UDim2.fromOffset(0, 14),
+		Size = UDim2.new(0, fieldWidth(), 0, Config.TrackHeight + 8),
+		Position = UDim2.new(0, FIELD_INSET, 0, trackY - 4),
 		BackgroundTransparency = 1,
 		Text = "",
 		AutoButtonColor = false,
+		ZIndex = 7,
 	}, wrap)
-	Util.set(hit, "CursorIcon", "PointingHand")
 
 	local function format(v)
 		if decimals > 0 then
@@ -1138,10 +1170,14 @@ function Components.Slider(parent, options)
 		return tostring(math.floor(v + 0.5)) .. suffix
 	end
 
-	local function render()
+	local function renderFill()
 		local alpha = (max > min) and ((value - min) / (max - min)) or 0
 		Util.set(fill, "Size", UDim2.fromScale(alpha, 1))
-		Util.set(valueLabel, "Text", format(value))
+		valueLabel.Text = format(value)
+		-- el número viaja con el relleno, igual que en la referencia
+		local usable = fieldWidth() - valueWidth
+		local offset = math.clamp(math.floor(alpha * fieldWidth() - valueWidth / 2 + 0.5), 0, usable)
+		Util.set(valueLabel, "Position", UDim2.new(0, FIELD_INSET + offset, 0, trackY - 1))
 	end
 
 	local function applyFromX(mouseX)
@@ -1149,7 +1185,7 @@ function Components.Slider(parent, options)
 		local size = track.AbsoluteSize
 		local alpha = math.clamp((mouseX - pos.X) / math.max(size.X, 1), 0, 1)
 		value = math.clamp(min + (max - min) * alpha, min, max)
-		render()
+		renderFill()
 		State.setFlag(flag, value, true)
 		if options.onChange then
 			pcall(options.onChange, value)
@@ -1177,7 +1213,7 @@ function Components.Slider(parent, options)
 		end
 	end)
 
-	render()
+	renderFill()
 	if flag then
 		State.Flags[flag] = value
 	end
@@ -1185,7 +1221,7 @@ function Components.Slider(parent, options)
 	return {
 		Set = function(v)
 			value = math.clamp(v, min, max)
-			render()
+			renderFill()
 			State.setFlag(flag, value)
 		end,
 		Get = function() return value end,
@@ -1193,32 +1229,34 @@ function Components.Slider(parent, options)
 	}
 end
 
--- ── 5.5 Dropdown ─────────────────────────────────────────────────────────────
+-- ── 5.5 Dropdown (22 px, degradado sutil y flecha pequeña) ──────────────────
 function Components.Dropdown(parent, options)
 	options = options or {}
-	local flag  = options.flag
+	local flag = options.flag
 	local items = options.items or {}
 	local value = options.default or items[1] or ""
 
 	local wrap = Util.create("Frame", {
-		Size = UDim2.new(1, 0, 0, 0),
-		AutomaticSize = Enum.AutomaticSize.Y,
+		Size = UDim2.new(1, 0, 0, options.text and (ROW_PITCH + Config.FieldHeight + 2) or Config.FieldHeight),
 		BackgroundTransparency = 1,
 	}, parent)
-	local wrapList = Util.list(wrap, 2)
-	Util.set(wrapList, "HorizontalAlignment", Enum.HorizontalAlignment.Left)
 
 	if options.text then
 		Util.label(wrap, {
 			Text = options.text,
-			TextSize = 13,
-			TextColor3 = Config.Color.textDim,
-			Size = UDim2.new(1, 0, 0, 18),
+			Font = Config.Font.regular,
+			TextSize = Config.TextSize.body,
+			TextColor3 = Config.Color.text,
+			Position = UDim2.new(0, LABEL_INSET, 0, 0),
+			Size = UDim2.new(1, -(LABEL_INSET + RIGHT_INSET), 0, ROW_PITCH),
+			TextTruncate = Enum.TextTruncate.AtEnd,
 		})
 	end
 
+	local boxY = options.text and (ROW_PITCH - 2) or 0
 	local header = Util.create("Frame", {
-		Size = UDim2.new(1, 0, 0, Config.FieldHeight),
+		Size = UDim2.new(0, fieldWidth(), 0, Config.FieldHeight),
+		Position = UDim2.new(0, FIELD_INSET, 0, boxY),
 		BackgroundTransparency = 1,
 	}, wrap)
 
@@ -1227,54 +1265,59 @@ function Components.Dropdown(parent, options)
 		BackgroundColor3 = Config.Color.fieldMid,
 		BorderSizePixel = 0,
 	}, header)
-	Util.corner(box, Config.CornerRadius)
+	Util.corner(box, 0)
 	local boxStroke = Util.stroke(box, Config.Color.fieldStroke, 1)
-	local boxGradient = Util.gradient(box, Config.Color.fieldTop, Config.Color.fieldBottom, Config.Color.fieldMid)
+	Util.gradient(box, Config.Color.fieldTop, Config.Color.fieldBottom, Config.Color.fieldMid)
 
 	local valueLabel = Util.label(box, {
 		Text = tostring(value),
-		TextSize = 13,
+		Font = Config.Font.regular,
+		TextSize = Config.TextSize.body,
 		TextColor3 = Config.Color.text,
-		Position = UDim2.fromOffset(6, 0),
-		Size = UDim2.new(1, -20, 1, 0),
-	})
-	Util.label(box, {
-		Text = "v",
-		Font = Config.Font.bold,
-		TextSize = 11,
-		TextColor3 = Config.Color.textFaint,
-		Size = UDim2.fromOffset(14, Config.FieldHeight),
-		Position = UDim2.new(1, -16, 0, 0),
-		TextXAlignment = Enum.TextXAlignment.Center,
+		Position = UDim2.new(0, 9, 0, 0),
+		Size = UDim2.new(1, -24, 1, 0),
+		TextTruncate = Enum.TextTruncate.AtEnd,
 	})
 
+	-- flecha: cuadrado girado 45° (triángulo visual)
+	local arrowHolder = Util.create("Frame", {
+		Size = UDim2.fromOffset(8, 8),
+		Position = UDim2.new(1, -15, 0.5, 0),
+		AnchorPoint = Vector2.new(0, 0.5),
+		BackgroundTransparency = 1,
+	}, box)
+	Util.create("Frame", {
+		Size = UDim2.fromOffset(5, 5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		BackgroundColor3 = Config.Color.textFaint,
+		BorderSizePixel = 0,
+		Rotation = 45,
+	}, arrowHolder)
+
 	local menu = Util.create("Frame", {
-		Size = UDim2.new(1, 0, 0, 0),
+		Size = UDim2.new(0, fieldWidth(), 0, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
 		BackgroundColor3 = Config.Color.menuBg,
 		BorderSizePixel = 0,
 		Visible = false,
 		ClipsDescendants = true,
+		Position = UDim2.new(0, FIELD_INSET, 0, boxY + Config.FieldHeight),
+		ZIndex = 20,
 	}, wrap)
-	Util.corner(menu, Config.CornerRadius)
+	Util.corner(menu, 0)
 	Util.stroke(menu, Config.Color.menuStroke, 1)
-	Util.gradient(menu, Color3.fromRGB(26, 26, 26), Color3.fromRGB(21, 21, 21), Config.Color.menuBg)
-	Util.pad(menu, { top = 2, left = 2, right = 2, bottom = 2 })
-	Util.list(menu, 1)
+	Util.pad(menu, { top = 2, bottom = 2, left = 2, right = 2 })
 
-	local buttons = {}
+	local menuButtons = {}
 
 	local function select(item, silent)
 		value = item
-		Util.set(valueLabel, "Text", tostring(item))
-		for option, button in pairs(buttons) do
-			if option == item then
-				Util.set(button, "BackgroundColor3", Config.Color.menuItemHover)
-				Util.set(button, "TextColor3", State.Accent)
-			else
-				Util.set(button, "BackgroundColor3", Config.Color.menuBg)
-				Util.set(button, "TextColor3", Config.Color.textDim)
-			end
+		valueLabel.Text = tostring(item)
+		for option, button in pairs(menuButtons) do
+			local chosen = (option == item)
+			Util.set(button, "BackgroundColor3", chosen and Config.Color.menuItemHover or Config.Color.menuBg)
+			Util.set(button, "TextColor3", chosen and Config.Color.text or Config.Color.textDim)
 		end
 		State.setFlag(flag, item, silent)
 		if options.callback then
@@ -1284,26 +1327,25 @@ function Components.Dropdown(parent, options)
 
 	for index, item in ipairs(items) do
 		local option = Util.create("TextButton", {
-			Size = UDim2.new(1, 0, 0, 22),
+			Size = UDim2.new(1, 0, 0, 18),
+			Position = UDim2.new(0, 0, 0, (index - 1) * 18 + 2),
 			BackgroundColor3 = (item == value) and Config.Color.menuItemHover or Config.Color.menuBg,
 			BorderSizePixel = 0,
-			Text = tostring(item),
+			Text = "  " .. tostring(item),
 			Font = Config.Font.regular,
-			TextSize = 13,
-			TextColor3 = (item == value) and State.Accent or Config.Color.textDim,
+			TextSize = Config.TextSize.body,
+			TextColor3 = (item == value) and Config.Color.text or Config.Color.textDim,
 			TextXAlignment = Enum.TextXAlignment.Left,
 			AutoButtonColor = false,
-			LayoutOrder = index,
+			ZIndex = 21,
 		}, menu)
 		Util.corner(option, 0)
-		Util.set(option, "TextTruncate", Enum.TextTruncate.AtEnd)
-		Util.create("UIPadding", { PaddingLeft = UDim.new(0, 6) }, option)
-		buttons[item] = option
+		menuButtons[item] = option
 
 		Util.connect(option.MouseEnter, function()
 			if item ~= value then
-				Util.set(option, "BackgroundColor3", Color3.fromRGB(30, 30, 30))
-				Util.set(option, "TextColor3", Color3.fromRGB(216, 216, 218))
+				Util.set(option, "BackgroundColor3", Config.Color.menuItemHover)
+				Util.set(option, "TextColor3", Config.Color.text)
 			end
 		end)
 		Util.connect(option.MouseLeave, function()
@@ -1317,29 +1359,22 @@ function Components.Dropdown(parent, options)
 			Util.set(menu, "Visible", false)
 		end)
 	end
+	Util.set(menu, "Size", UDim2.new(0, fieldWidth(), 0, #items * 18 + 4))
 
 	local hit = Util.create("TextButton", {
 		Size = UDim2.fromScale(1, 1),
 		BackgroundTransparency = 1,
 		Text = "",
 		AutoButtonColor = false,
+		ZIndex = 3,
 	}, header)
-	Util.set(hit, "CursorIcon", "PointingHand")
 
 	Util.connect(hit.MouseEnter, function()
-		Util.set(boxGradient, "Color", ColorSequence.new({
-				ColorSequenceKeypoint.new(0, Config.Color.fieldHoverTop),
-				ColorSequenceKeypoint.new(0.52, Config.Color.fieldMid),
-				ColorSequenceKeypoint.new(1, Config.Color.fieldBottom)
-			}))
-		Util.set(boxStroke, "Color", Color3.fromRGB(56, 56, 56))
+		Util.set(box, "BackgroundColor3", Config.Color.fieldHoverTop)
+		Util.set(boxStroke, "Color", Color3.fromRGB(64, 64, 64))
 	end)
 	Util.connect(hit.MouseLeave, function()
-		Util.set(boxGradient, "Color", ColorSequence.new({
-				ColorSequenceKeypoint.new(0, Config.Color.fieldTop),
-				ColorSequenceKeypoint.new(0.52, Config.Color.fieldMid),
-				ColorSequenceKeypoint.new(1, Config.Color.fieldBottom)
-			}))
+		Util.set(box, "BackgroundColor3", Config.Color.fieldMid)
 		Util.set(boxStroke, "Color", Config.Color.fieldStroke)
 	end)
 	Util.connect(hit.MouseButton1Click, function()
@@ -1357,30 +1392,31 @@ function Components.Dropdown(parent, options)
 	}
 end
 
--- ── 5.6 Keybind (fila independiente) ─────────────────────────────────────────
+-- ── 5.6 Keybind (fila independiente) ────────────────────────────────────────
 function Components.Keybind(parent, options)
 	options = options or {}
-	local row = createRow(parent, options.height or Config.RowHeight, true)
+	local row = createRow(parent, options.height or ROW_PITCH, true, CHECK_INSET)
 
 	if (options.text or "") ~= "" then
 		Util.label(row, {
 			Text = options.text,
-			TextSize = 13,
+			Font = Config.Font.regular,
+			TextSize = Config.TextSize.body,
 			TextColor3 = Config.Color.text,
-			Size = UDim2.new(1, -44, 1, 0),
+			Position = UDim2.new(0, LABEL_INSET, 0, 0),
+			Size = UDim2.new(1, -(LABEL_INSET + 52), 1, 0),
+			TextTruncate = Enum.TextTruncate.AtEnd,
 		})
 	end
 
 	local capture = makeKeyCapture(row, {
 		flag = options.flag,
 		default = options.default,
-		width = options.width or 42,
-		height = options.height or Config.RowHeight,
+		width = options.width or 46,
 		callback = options.callback,
 		onKey = options.onKey,
 	})
 
-	-- al hacer clic en el texto de la fila también se captura la tecla
 	Util.connect(Util.getHit(row).MouseButton1Click, function()
 		capture.start()
 	end)
@@ -1392,40 +1428,40 @@ function Components.Keybind(parent, options)
 	}
 end
 
--- ── 5.7 Button ───────────────────────────────────────────────────────────────
+-- ── 5.7 Button (borde fino y degradado, como en la referencia) ──────────────
 function Components.Button(parent, options)
 	options = options or {}
+	-- contenedor de ancho completo: el UIListLayout del panel coloca este marco
+	local holder = Util.create("Frame", {
+		Name = "ButtonRow",
+		Size = UDim2.new(1, 0, 0, options.height or Config.ButtonHeight),
+		BackgroundTransparency = 1,
+	}, parent)
+
 	local button = Util.create("TextButton", {
-		Size = options.size or UDim2.new(1, 0, 0, Config.ButtonHeight),
-		BackgroundColor3 = Config.Color.btnMid,
+		Size = UDim2.new(0, fieldWidth(), 1, 0),
+		Position = UDim2.fromOffset(FIELD_INSET, 0),
+		BackgroundColor3 = Config.Color.fieldMid,
 		BorderSizePixel = 0,
 		Text = options.text or "Button",
 		Font = Config.Font.medium,
-		TextSize = 13,
+		TextSize = Config.TextSize.button,
 		TextColor3 = Config.Color.textButton,
-		TextScaled = false,
+		TextXAlignment = Enum.TextXAlignment.Center,
 		AutoButtonColor = false,
-	}, parent)
-	Util.corner(button, Config.CornerRadius)
-	local stroke = Util.stroke(button, Config.Color.btnStroke, 1)
-	local gradient = Util.gradient(button, Config.Color.btnTop, Config.Color.btnBottom, Config.Color.btnMid)
-	Util.set(button, "CursorIcon", "PointingHand")
+	}, holder)
+	Util.corner(button, 0)
+	local stroke = Util.stroke(button, Config.Color.fieldStroke, 1)
+	local gradient = Util.gradient(button, Config.Color.fieldTop, Config.Color.fieldBottom, Config.Color.fieldMid)
 
 	Util.connect(button.MouseEnter, function()
-		Util.set(gradient, "Color", ColorSequence.new({
-				ColorSequenceKeypoint.new(0, Config.Color.btnHoverTop),
-				ColorSequenceKeypoint.new(0.52, Config.Color.btnMid),
-				ColorSequenceKeypoint.new(1, Config.Color.btnHoverBot)
-			}))
-		Util.set(stroke, "Color", Color3.fromRGB(58, 58, 58))
+		Util.set(button, "BackgroundColor3", Config.Color.fieldMid)
+		Util.set(gradient, "Enabled", false)
+		Util.set(stroke, "Color", Color3.fromRGB(66, 66, 66))
 	end)
 	Util.connect(button.MouseLeave, function()
-		Util.set(gradient, "Color", ColorSequence.new({
-				ColorSequenceKeypoint.new(0, Config.Color.btnTop),
-				ColorSequenceKeypoint.new(0.52, Config.Color.btnMid),
-				ColorSequenceKeypoint.new(1, Config.Color.btnBottom)
-			}))
-		Util.set(stroke, "Color", Config.Color.btnStroke)
+		Util.set(gradient, "Enabled", true)
+		Util.set(stroke, "Color", Config.Color.fieldStroke)
 	end)
 	Util.connect(button.MouseButton1Click, function()
 		if options.callback then
@@ -1438,83 +1474,91 @@ function Components.Button(parent, options)
 
 	return {
 		Frame = button,
+		Row = holder,
 		SetText = function(text)
 			Util.set(button, "Text", text)
 		end,
 	}
 end
 
--- ── 5.8 Fila de texto con valor a la derecha ─────────────────────────────────
+-- ── 5.8 Fila de texto con valor a la derecha ────────────────────────────────
 function Components.LabelRow(parent, options)
 	options = options or {}
-	local row = createRow(parent, options.height or Config.RowHeight, options.interactive == true)
+	local row = createRow(parent, options.height or ROW_PITCH, options.interactive == true, CHECK_INSET)
 	Util.label(row, {
 		Text = options.text or "",
-		TextSize = 13,
+		Font = Config.Font.regular,
+		TextSize = Config.TextSize.body,
 		TextColor3 = options.dim and Config.Color.textDim or Config.Color.text,
-		Size = UDim2.new(1, -(options.rightWidth or 0), 1, 0),
+		Position = UDim2.new(0, LABEL_INSET, 0, 0),
+		Size = UDim2.new(1, -(LABEL_INSET + (options.rightWidth or 0) + 8), 1, 0),
+		TextTruncate = Enum.TextTruncate.AtEnd,
 	})
 	if options.rightText then
 		Util.label(row, {
 			Text = options.rightText,
-			Font = Config.Font.bold,
-			TextSize = 12,
+			Font = Config.Font.regular,
+			TextSize = Config.TextSize.hint,
 			TextColor3 = Config.Color.textFaint,
 			Size = UDim2.new(0, options.rightWidth or 40, 1, 0),
-			Position = UDim2.new(1, -(options.rightWidth or 40), 0, 0),
+			Position = UDim2.new(1, -(options.rightWidth or 40) - RIGHT_INSET + 8, 0, 0),
 			TextXAlignment = Enum.TextXAlignment.Right,
 		})
 	end
 	return row
 end
 
--- ── 5.9 Fila con muestra de color (Menu color) ────────────────────────────────
+-- ── 5.9 Fila con muestra de color ───────────────────────────────────────────
 function Components.ColorRow(parent, options)
 	options = options or {}
-	local row = createRow(parent, options.height or Config.RowHeight, true)
+	local row = createRow(parent, options.height or ROW_PITCH, true, CHECK_INSET)
 	Util.label(row, {
 		Text = options.text or "Menu color",
-		TextSize = 13,
+		Font = Config.Font.regular,
+		TextSize = Config.TextSize.body,
 		TextColor3 = Config.Color.text,
-		Size = UDim2.new(1, -34, 1, 0),
+		Position = UDim2.new(0, LABEL_INSET, 0, 0),
+		Size = UDim2.new(1, -(LABEL_INSET + 34), 1, 0),
 	})
 	local swatch = Util.create("Frame", {
-		Size = UDim2.fromOffset(26, 9),
-		Position = UDim2.new(1, -26, 0.5, 0),
+		Size = UDim2.fromOffset(22, 8),
+		Position = UDim2.new(1, -22 - RIGHT_INSET + 6, 0.5, 0),
 		AnchorPoint = Vector2.new(0, 0.5),
 		BackgroundColor3 = State.Accent,
 		BorderSizePixel = 0,
 	}, row)
 	Util.corner(swatch, 0)
-	Util.stroke(swatch, Color3.fromRGB(58, 58, 58), 1)
 	State.bindAccent(swatch, "bg")
 	return { Row = row, Swatch = swatch }
 end
 
--- ── 5.10 Subencabezado ("Omnis") ─────────────────────────────────────────────
+-- ── 5.10 Subencabezado ("Omnis") ────────────────────────────────────────────
 function Components.SubTitle(parent, text)
 	return Util.label(parent, {
 		Text = text,
 		Font = Config.Font.bold,
-		TextSize = 13,
+		TextSize = Config.TextSize.title,
 		TextColor3 = Config.Color.textTitle,
-		Size = UDim2.new(1, 0, 0, 18),
+		Position = UDim2.new(0, CHECK_INSET, 0, 0),
+		Size = UDim2.new(1, -(CHECK_INSET + RIGHT_INSET), 0, ROW_PITCH),
 	})
 end
 
---- Nota de texto (usada en las pestañas de ejemplo).
+--- Nota de texto para pestañas sin controles.
 function Components.Note(parent, text, height)
 	return Util.label(parent, {
 		Text = text,
-		TextSize = 13,
+		Font = Config.Font.regular,
+		TextSize = Config.TextSize.body,
 		TextColor3 = Config.Color.textDim,
 		TextWrapped = true,
 		TextYAlignment = Enum.TextYAlignment.Top,
-		Size = UDim2.new(1, 0, 0, height or 32),
+		Position = UDim2.new(0, LABEL_INSET, 0, 0),
+		Size = UDim2.new(1, -(LABEL_INSET + RIGHT_INSET), 0, height or 34),
 	})
 end
 
--- ── 5.11 Tabla de la API (se completa con ventana y persistencia más abajo) ──
+-- ── 5.11 Tabla de la API ────────────────────────────────────────────────────
 local API = {}
 
 API.AddPanel    = Components.Panel
@@ -1525,9 +1569,9 @@ API.AddDropdown = Components.Dropdown
 API.AddKeybind  = Components.Keybind
 API.AddButton   = Components.Button
 API.AddLabelRow = Components.LabelRow
+API.AddColorRow = Components.ColorRow
 API.AddSubTitle = Components.SubTitle
 API.AddNote     = Components.Note
-
 --==============================================================================
 -- 6. WINDOW · ventana, arrastre, pestañas y escalado
 --==============================================================================
@@ -1757,8 +1801,10 @@ end
 local TAB_ORDER = {}
 
 local function setTabVisual(tab, active)
-	tab.button.BackgroundColor3 = active and Config.Color.tabActive or Config.Color.sidebar
-	tab.indicator.Visible = active
+	Util.set(tab.button, "BackgroundColor3", active and Config.Color.tabActive or Config.Color.sidebar)
+	-- la pestaña activa se marca con un tile algo más claro y dos líneas finas
+	Util.set(tab.indicator, "Visible", active)
+	Util.set(tab.footer, "Visible", active)
 	tab.icon.setColor(function()
 		return active and Config.Color.iconActive or Config.Color.iconIdle
 	end)
@@ -1793,18 +1839,27 @@ function Window.AddTab(options)
 	}, tabHolder)
 	Util.set(button, "CursorIcon", "PointingHand")
 
+	-- líneas del tile activo (arriba y abajo), como en la referencia
 	local indicator = Util.create("Frame", {
-		Name = "Indicator",
-		Size = UDim2.new(0, 2, 1, 0),
+		Name = "TabTopLine",
+		Size = UDim2.new(1, 0, 0, 1),
 		Position = UDim2.new(0, 0, 0, 0),
-		BackgroundColor3 = State.Accent,
+		BackgroundColor3 = Config.Color.tabStroke,
 		BorderSizePixel = 0,
 		Visible = false,
+		ZIndex = 4,
 	}, button)
-	Util.corner(indicator, 0)
-	State.bindAccent(indicator, "bg")
+	local footer = Util.create("Frame", {
+		Name = "TabBottomLine",
+		Size = UDim2.new(1, 0, 0, 1),
+		Position = UDim2.new(0, 0, 1, -1),
+		BackgroundColor3 = Config.Color.tabStroke,
+		BorderSizePixel = 0,
+		Visible = false,
+		ZIndex = 4,
+	}, button)
 
-	local icon = Icons.build(button, options.icon or "gear", options.iconSize or 48)
+	local icon = Icons.build(button, options.icon or "gear", options.iconSize or 42)
 
 	Util.connect(button.MouseEnter, function()
 		if Window.ActiveTab ~= name then
@@ -1830,7 +1885,8 @@ function Window.AddTab(options)
 	}, content)
 
 	Window.Pages[name] = page
-	Window.Tabs[name] = { button = button, icon = icon, indicator = indicator, page = page }
+	Window.Tabs[name] = { button = button, icon = icon, indicator = indicator,
+		footer = footer, page = page }
 	TAB_ORDER[#TAB_ORDER + 1] = name
 
 	-- repartir alturas entre las pestañas existentes
@@ -1980,23 +2036,24 @@ local contentOk, contentErr = pcall(function()
 local function twoColumns(page)
 	local left = Util.create("Frame", {
 		Name = "LeftColumn",
-		Size = UDim2.new(0.5, -(Config.ColumnGap / 2), 1, 0),
+		Size = UDim2.new(0, Config.PanelWidth, 1, 0),
 		BackgroundTransparency = 1,
 	}, page)
 
 	local right = Util.create("Frame", {
 		Name = "RightColumn",
-		Size = UDim2.new(0.5, -(Config.ColumnGap / 2), 1, 0),
-		Position = UDim2.new(0.5, (Config.ColumnGap / 2), 0, 0),
+		Size = UDim2.new(0, Config.PanelWidth, 1, 0),
+		Position = UDim2.new(0, Config.PanelWidth + Config.PanelGap, 0, 0),
 		BackgroundTransparency = 1,
 	}, page)
 
 	return left, right
 end
 
---- Panel con lista con scroll interno (columna izquierda del diseño).
+--- Panel alto con scroll interno (columna izquierda de la referencia).
 local function scrollPanel(parent, title)
 	local panel = Util.create("Frame", {
+		Name = "ScrollPanel",
 		Size = UDim2.fromScale(1, 1),
 		BackgroundColor3 = Config.Color.panel,
 		BorderSizePixel = 0,
@@ -2004,50 +2061,64 @@ local function scrollPanel(parent, title)
 	}, parent)
 	Util.corner(panel, Config.CornerRadius)
 	Util.stroke(panel, Config.Color.panelStroke, 1)
-	Util.gradient(panel, Config.Color.panelTop, Config.Color.panelBottom, Config.Color.panel)
-	Util.pad(panel, Config.PanelPad)
-
-	Util.label(panel, {
-		Text = title,
-		Font = Config.Font.bold,
-		TextSize = 14,
-		TextColor3 = Config.Color.textTitle,
-		Size = UDim2.new(1, 0, 0, 20),
-	})
 
 	local scroll = Util.create("ScrollingFrame", {
-		Size = UDim2.new(1, 0, 1, -24),
-		Position = UDim2.fromOffset(0, 24),
+		Name = "Scroll",
+		Size = UDim2.new(1, 0, 1, 0),
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		CanvasSize = UDim2.new(0, 0, 0, 0),
-		AutomaticCanvasSize = Enum.AutomaticSize.Y,
-		ScrollBarThickness = 3,
+		ScrollBarThickness = 6,
 		ScrollBarImageColor3 = Config.Color.scrollThumb,
+		ScrollBarImageTransparency = 0,
 		ScrollingDirection = Enum.ScrollingDirection.Y,
-		ElasticBehavior = Enum.ElasticBehavior.Never,
+		ClipsDescendants = true,
 	}, panel)
-	Util.list(scroll, Config.RowGap)
+	Util.set(scroll, "AutomaticCanvasSize", Enum.AutomaticSize.Y)
+	Util.set(scroll, "ElasticBehavior", Enum.ElasticBehavior.Never)
+	Util.set(scroll, "ScrollBarImageColor3", Config.Color.scrollThumb)
+	Util.set(scroll, "VerticalScrollBarInset", Enum.ScrollBarInset.ScrollBar)
+	Util.create("UIPadding", {
+		PaddingTop = UDim.new(0, Config.PanelPad.top),
+		PaddingBottom = UDim.new(0, Config.PanelPad.bottom),
+		PaddingLeft = UDim.new(0, 0),
+		PaddingRight = UDim.new(0, 6),
+	}, scroll)
 
 	local body = Util.create("Frame", {
-		Size = UDim2.new(1, -5, 0, 0),
+		Name = "ScrollBody",
+		Size = UDim2.new(1, 0, 0, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
 		BackgroundTransparency = 1,
 	}, scroll)
-	local list = Util.list(body, Config.RowGap)
+	local list = Util.list(body, 0)
 	Util.set(list, "HorizontalAlignment", Enum.HorizontalAlignment.Left)
 
-	-- En ejecutores sin AutomaticCanvasSize, mantener el scroll funcional.
+	-- respaldo para ejecutores sin AutomaticCanvasSize
 	local function updateCanvas()
-		if body.Parent then
-			local h = body.AbsoluteSize.Y
-			if h and h > 0 then
-				Util.set(scroll, "CanvasSize", UDim2.fromOffset(0, math.ceil(h) + 2))
-			end
+		local height = body.AbsoluteSize.Y
+		if height and height > 0 then
+			Util.set(scroll, "CanvasSize", UDim2.fromOffset(0, math.ceil(height) + Config.PanelPad.bottom))
 		end
 	end
 	Util.connect(body:GetPropertyChangedSignal("AbsoluteSize"), updateCanvas)
 	task.defer(updateCanvas)
+
+	-- título que rompe el borde superior
+	local titleLabel = Util.label(panel, {
+		Text = title,
+		Font = Config.Font.bold,
+		TextSize = Config.TextSize.title,
+		TextColor3 = Config.Color.textTitle,
+		BackgroundColor3 = Config.Color.window,
+		BackgroundTransparency = 0,
+		Size = UDim2.new(0, 0, 0, 12),
+		AutomaticSize = Enum.AutomaticSize.X,
+		Position = UDim2.new(0, 14, 0, -Config.TitleOverlap),
+		TextXAlignment = Enum.TextXAlignment.Left,
+		ZIndex = 6,
+	})
+	Util.pad(titleLabel, { top = 0, bottom = 0, left = 3, right = 3 })
 
 	return body, scroll
 end
@@ -2062,7 +2133,7 @@ local miscBody = scrollPanel(miscLeftCol, "Miscellaneous")
 API.AddSlider(miscBody, {
 	text = "Override FOV",
 	flag = "override_fov",
-	min = 0, max = 240, default = 115, suffix = "°",
+	min = 0, max = 140, default = 115, suffix = "°",
 })
 
 -- Toggles y dirección de air strafe
@@ -2124,22 +2195,15 @@ API.AddToggle(miscBody, {
 })
 
 -- Botón ancho (80 % del panel, como en el preview)
-do
-	local holder = Util.create("Frame", {
-		Size = UDim2.new(1, 0, 0, Config.ButtonHeight + 1),
-		BackgroundTransparency = 1,
-	}, miscBody)
-	API.AddButton(holder, {
-		text = "Steal player name",
-		size = UDim2.new(0.8, 0, 1, 0),
-		callback = function()
-			Window.Notify("Acción de demostración: Steal player name")
-		end,
-	}).Frame.Position = UDim2.fromScale(0.1, 0)
-end
+API.AddButton(miscBody, {
+	text = "Steal player name",
+	callback = function()
+		Window.Notify("Acción de demostración: Steal player name")
+	end,
+})
 
 -- ── 9.2 Columna derecha: Settings + Other ────────────────────────────────────
-Util.list(settingsColumn, 6)
+Util.list(settingsColumn, 22)
 
 local settingsBody, settingsPanel = Components.Panel(settingsColumn, "Settings", { order = 1 })
 
@@ -2178,7 +2242,7 @@ API.AddToggle(settingsBody, { text = "Low FPS warning", flag = "low_fps_warning"
 API.AddToggle(settingsBody, { text = "Lock menu layout", flag = "lock_layout", default = false })
 API.AddToggle(settingsBody, { text = "Trashtalk", flag = "trashtalk", default = false })
 
-local otherBody, otherPanel = Components.Panel(settingsColumn, "Other", { order = 2 })
+local otherBody, otherPanel = Components.Panel(settingsColumn, "Other", { order = 2, gap = Config.ButtonGap })
 
 -- Fila del selector de config: dropdown + keybind [X]
 do
@@ -2188,7 +2252,7 @@ do
 	}, otherBody)
 
 	local dropHolder = Util.create("Frame", {
-		Size = UDim2.new(1, -34, 1, 0),
+		Size = UDim2.new(1, 0, 0, Config.FieldHeight),
 		BackgroundTransparency = 1,
 	}, row)
 
@@ -2198,16 +2262,28 @@ do
 		default = "Rage",
 	})
 
+	-- la tecla del slot se dibuja justo a la derecha del desplegable
 	local keyHolder = Util.create("Frame", {
-		Size = UDim2.new(0, 30, 1, 0),
-		Position = UDim2.new(1, -30, 0, 0),
+		Size = UDim2.new(0, 34, 0, Config.FieldHeight),
+		Position = UDim2.fromOffset(Config.FieldInset
+			+ (Config.PanelWidth - Config.FieldInset - Config.RightInset) + 8, 0),
 		BackgroundTransparency = 1,
 	}, row)
 
-	API.AddKeybind(keyHolder, {
-		text = "", flag = "config_key", default = Enum.KeyCode.X,
-		height = Config.FieldHeight, width = 28,
+	local capture = Components._makeKeyCapture(keyHolder, {
+		flag = "config_key", default = Enum.KeyCode.X,
+		width = 26, rightInset = 0,
 	})
+	State.Flags["config_key"] = Enum.KeyCode.X
+	Util.connect(Util.create("TextButton", {
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		Text = "",
+		AutoButtonColor = false,
+		ZIndex = 7,
+	}, keyHolder).MouseButton1Click, function()
+		capture.start()
+	end)
 end
 
 API.AddButton(otherBody, { text = "Load config", callback = function() Persistence.load() end })
@@ -2325,9 +2401,6 @@ placeholderPage("Combat", "crosshair", "Combat",
 	"Cada control guarda su estado en Flags y dispara tu callback con UI:Bind.")
 placeholderPage("Visuals", "sun", "Visuals",
 	'Crea más paneles con UI.AddPanel(columna, "Título").')
-placeholderPage("Extra", "scythe", "Extra",
-	"Los componentes nuevos heredan el tema y el color de acento.")
-
 -- Config (misma pestaña de icono engranaje del diseño)
 do
 	local page = Window.AddTab({ name = "Config", icon = "gear" })
@@ -2345,6 +2418,9 @@ do
 	end })
 	API.AddButton(body, { text = "Reset config", callback = function() Persistence.reset() end })
 end
+
+placeholderPage("Extra", "scythe", "Extra",
+	"Los componentes nuevos heredan el tema y el color de acento.")
 
 placeholderPage("Account", "person", "Account",
 	"El botón Unload destruye la interfaz y desconecta todas las señales.")
