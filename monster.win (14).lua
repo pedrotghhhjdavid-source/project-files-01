@@ -1,12 +1,12 @@
 --!nonstrict
--- NEON MENU · v2.2.0 · tipografía legible · filas sin recortes
+-- NEON MENU · v3.0.0 · réplica 1:1 de la referencia (656x552)
 --[[═══════════════════════════════════════════════════════════════════════════════
-    N E O N   M E N U   ·   Luau (Roblox)   ·   v2 “GameSense”
+    N E O N   M E N U   ·   Luau (Roblox)   ·   v3.0.0 “GameSense”
    ───────────────────────────────────────────────────────────────────────────
-   Recreación en Luau/GUI de la vista previa final (neon_menu_preview.html):
-   ventana negra carbón, paneles grises rectangulares con borde fino, esquinas
-   cuadradas, acento magenta, barra arcoíris de 2 px, iconos de silueta,
-   sliders de 3 px, dropdowns y botones con degradado sutil, tipografía compacta.
+   Réplica medida píxel a píxel de la captura de referencia (656 x 552):
+   ventana 656x552, sidebar 73+1, paneles de 256 con hueco de 21, filas de 18,
+   títulos de sección montados sobre el borde, checkbox de 6 px, pista de 8 px,
+   dropdown de 20, botones de 23 y ancho 156, barra arcoíris de 4 px.
 
    Sólo interfaz: ningún control ejecuta lógica de juego. Todos los controles
    guardan su estado en Flags[] y llaman a tu callback opcional (UI:Bind).
