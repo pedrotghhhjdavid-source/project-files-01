@@ -185,6 +185,33 @@ function Util.corner(obj, radius)
 	return Util.create("UICorner", { CornerRadius = UDim.new(0, radius or Config.CornerRadius) }, obj)
 end
 
+-- Las instancias de Roblox no aceptan campos personalizados, así que las
+-- referencias auxiliares (stroke, zona clicable) se guardan en tablas Lua.
+local strokeRegistry = setmetatable({}, { __mode = "k" })
+local hitRegistry = setmetatable({}, { __mode = "k" })
+
+--- Devuelve el UIStroke asociado a un objeto (o nil).
+function Util.getStroke(obj)
+	return strokeRegistry[obj]
+end
+
+--- Asocia un UIStroke a un objeto para poder recolorearlo luego.
+function Util.setStroke(obj, stroke)
+	strokeRegistry[obj] = stroke
+	return stroke
+end
+
+--- Devuelve el TextButton que cubre la fila (zona clicable), o nil.
+function Util.getHit(obj)
+	return hitRegistry[obj]
+end
+
+--- Asocia la zona clicable a la fila.
+function Util.setHit(obj, hit)
+	hitRegistry[obj] = hit
+	return hit
+end
+
 --- Borde fino.
 function Util.stroke(obj, color, thickness, transparency)
 	local s = Util.create("UIStroke", {
@@ -193,8 +220,7 @@ function Util.stroke(obj, color, thickness, transparency)
 		Transparency = transparency or 0,
 		ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
 	}, obj)
-	obj.UIStroke = s
-	return s
+	return Util.setStroke(obj, s)
 end
 
 --- Padding por lados.
@@ -338,7 +364,6 @@ local function ring(parent, diameter, thickness, position, color)
 	}, parent)
 	Util.corner(f, math.floor(diameter / 2))
 	local s = Util.stroke(f, color or Config.Color.iconIdle, thickness or 1.5)
-	f.UIStroke = s
 	return f, s
 end
 
@@ -627,8 +652,9 @@ function State.applyAccent(color)
 			elseif binding.kind == "text" then
 				obj.TextColor3 = c
 			elseif binding.kind == "stroke" then
-				if obj.UIStroke then
-					obj.UIStroke.Color = c
+				local strokeObj = Util.getStroke(obj)
+				if strokeObj then
+					strokeObj.Color = c
 				end
 			end
 		end
@@ -726,7 +752,7 @@ local function createRow(parent, height, interactive)
 		Util.connect(hit.MouseLeave, function()
 			row.BackgroundTransparency = 1
 		end)
-		row.Hit = hit
+		Util.setHit(row, hit)
 	end
 	return row
 end
@@ -917,7 +943,7 @@ function Components.Toggle(parent, options)
 		end
 	end)
 
-	Util.connect(row.Hit.MouseButton1Click, function()
+	Util.connect(Util.getHit(row).MouseButton1Click, function()
 		set(not value)
 	end)
 
@@ -1090,7 +1116,7 @@ function Components.Dropdown(parent, options)
 		BorderSizePixel = 0,
 	}, header)
 	Util.corner(box, Config.CornerRadius)
-	Util.stroke(box, Config.Color.fieldStroke, 1)
+	local boxStroke = Util.stroke(box, Config.Color.fieldStroke, 1)
 	local boxGradient = Util.gradient(box, Config.Color.fieldTop, Config.Color.fieldBottom, Config.Color.fieldMid)
 
 	local valueLabel = Util.label(box, {
@@ -1194,7 +1220,7 @@ function Components.Dropdown(parent, options)
 			ColorSequenceKeypoint.new(0.52, Config.Color.fieldMid),
 			ColorSequenceKeypoint.new(1, Config.Color.fieldBottom),
 		})
-		box.UIStroke.Color = Color3.fromRGB(56, 56, 56)
+		boxStroke.Color = Color3.fromRGB(56, 56, 56)
 	end)
 	Util.connect(hit.MouseLeave, function()
 		boxGradient.Color = ColorSequence.new({
@@ -1202,7 +1228,7 @@ function Components.Dropdown(parent, options)
 			ColorSequenceKeypoint.new(0.52, Config.Color.fieldMid),
 			ColorSequenceKeypoint.new(1, Config.Color.fieldBottom),
 		})
-		box.UIStroke.Color = Config.Color.fieldStroke
+		boxStroke.Color = Config.Color.fieldStroke
 	end)
 	Util.connect(hit.MouseButton1Click, function()
 		menu.Visible = not menu.Visible
@@ -1243,7 +1269,7 @@ function Components.Keybind(parent, options)
 	})
 
 	-- al hacer clic en el texto de la fila también se captura la tecla
-	Util.connect(row.Hit.MouseButton1Click, function()
+	Util.connect(Util.getHit(row).MouseButton1Click, function()
 		capture.start()
 	end)
 
@@ -1987,7 +2013,7 @@ API.AddKeybind(settingsBody, {
 -- Menu color: cicla los acentos del tema
 do
 	local colorRow = Components.ColorRow(settingsBody, { text = "Menu color" })
-	Util.connect(colorRow.Row.Hit.MouseButton1Click, function()
+	Util.connect(Util.getHit(colorRow.Row).MouseButton1Click, function()
 		local currentIndex = 1
 		for index, accent in ipairs(Config.Accents) do
 			if accent.color == State.Accent then
