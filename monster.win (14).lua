@@ -1,4 +1,5 @@
 --!nonstrict
+-- NEON MENU · v2.0.1 · FIX: "UIStroke is not a valid member of Frame"
 --[[═══════════════════════════════════════════════════════════════════════════════
     N E O N   M E N U   ·   Luau (Roblox)   ·   v2 “GameSense”
    ───────────────────────────────────────────────────────────────────────────
@@ -44,7 +45,7 @@
 --==============================================================================
 local Config = {}
 
-Config.Version = "2.0.0"
+Config.Version = "2.0.1"   -- fix: UIStroke / propiedades inexistentes
 
 -- Tamaño de ventana y estructura
 Config.WindowSize     = Vector2.new(620, 540)
@@ -163,12 +164,26 @@ Util.setclipboard = optional("setclipboard")
 Util.getclipboard = optional("getclipboard")
 Util.gethui      = optional("gethui")
 
+--- Asigna una propiedad sólo si es válida (nunca aborta el script).
+-- Las instancias de Roblox lanzan "X is not a valid member of Y" al asignar
+-- una propiedad inexistente; aquí ese error se captura y se informa.
+function Util.setProperty(obj, key, value)
+	local ok, err = pcall(function()
+		obj[key] = value
+	end)
+	if not ok then
+		warn("[NeonMenu] propiedad ignorada en " .. tostring(obj.ClassName) ..
+			"." .. tostring(key) .. ": " .. tostring(err))
+	end
+	return ok
+end
+
 --- Crea una instancia aplicando propiedades y orden automático en listas.
 function Util.create(class, props, parent)
 	local obj = Instance.new(class)
 	for key, value in pairs(props or {}) do
 		if key ~= "Parent" then
-			obj[key] = value
+			Util.setProperty(obj, key, value)
 		end
 	end
 	if parent then
@@ -1429,6 +1444,15 @@ if not guiParent then
 	guiParent = ok and coreGui or LocalPlayer:WaitForChild("PlayerGui")
 end
 
+-- Si ya había una versión cargada (p. ej. la antigua con el bug), se cierra
+-- para no dejar dos ventanas superpuestas.
+pcall(function()
+	local previous = getgenv and getgenv().NeonMenu
+	if previous and type(previous) == "table" and type(previous.Destroy) == "function" then
+		previous.Destroy()
+	end
+end)
+
 local screenGui = Util.create("ScreenGui", {
 	Name = "NeonMenu_" .. tostring(math.random(1000, 9999)),
 	ResetOnSpawn = false,
@@ -2286,7 +2310,9 @@ else
 	_G.UI = API
 end
 
--- Aviso de arranque (sin animaciones)
+-- Aviso de arranque (sin animaciones) + marca de versión en consola
 Window.Notify("Neon Menu v" .. Config.Version .. " · " .. Util.keyName(State.MenuKey) .. " para abrir/cerrar")
+print(("[NeonMenu] v%s cargado · fix UIStroke activo · %s abre/cierra")
+	:format(Config.Version, Util.keyName(State.MenuKey)))
 
 return API
