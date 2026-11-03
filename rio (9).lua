@@ -245,8 +245,8 @@ pcall(function() LocalPlayer:WaitForChild("PlayerGui", 12) end)
 local Camera = workspace.CurrentCamera
 
 -- ==================== Obsidian UI ====================
--- PROTOTYPO UI · SKEET/GAMESENSE REPLICA (FIXED)
--- Font.Code reemplazado por Gotham · Watermark añadido · CreateWindow robusto
+-- PROTOTYPO UI · SKEET/GAMESENSE REPLICA (v3 FIXED)
+-- Compatibilidad total con BuildUI() original
 
 pcall(function()
     local cg = game:GetService("CoreGui")
@@ -264,7 +264,6 @@ local TweenService = game:GetService("TweenService")
 local HttpService = game:GetService("HttpService")
 local LocalPlayer = Players.LocalPlayer
 
--- Fuente compatible (Code fue removido de Roblox)
 local MAIN_FONT = Enum.Font.Gotham
 local MONO_FONT = Enum.Font.SourceSans
 do
@@ -272,7 +271,6 @@ do
     if ok and f then MONO_FONT = f end
 end
 
--- ==================== SKEET THEME ====================
 local Theme = {
     BG          = Color3.fromRGB(18, 18, 18),
     Header      = Color3.fromRGB(26, 26, 26),
@@ -290,7 +288,6 @@ local Theme = {
     Green       = Color3.fromRGB(80, 200, 80),
 }
 
--- ==================== PIXEL ICONS ====================
 local PixelIcons = {
     rage = {{0,0,0,0,1,1,0,0,0,0},{0,0,1,1,0,0,1,1,0,0},{0,1,0,0,0,0,0,0,1,0},{0,1,0,0,1,1,0,0,1,0},{1,0,0,1,0,0,1,0,0,1},{1,0,0,1,0,0,1,0,0,1},{0,1,0,0,1,1,0,0,1,0},{0,1,0,0,0,0,0,0,1,0},{0,0,1,1,0,0,1,1,0,0},{0,0,0,0,1,1,0,0,0,0}},
     aa = {{0,0,0,0,1,1,0,0,0,0},{0,0,0,1,1,1,1,0,0,0},{0,0,0,1,1,1,1,0,0,0},{0,0,0,0,1,1,0,0,0,0},{1,0,1,1,1,1,1,1,0,1},{1,1,1,1,1,1,1,1,1,1},{0,0,0,1,1,1,1,0,0,0},{0,0,0,1,1,1,1,0,0,0},{0,0,1,1,0,0,1,1,0,0},{0,1,1,0,0,0,0,1,1,0}},
@@ -299,11 +296,17 @@ local PixelIcons = {
     misc = {{0,0,0,1,1,1,1,0,0,0},{0,0,1,0,0,0,0,1,0,0},{0,1,0,0,1,1,0,0,1,0},{1,0,0,1,0,0,1,0,0,1},{1,0,1,0,0,0,0,1,0,1},{1,0,1,0,0,0,0,1,0,1},{1,0,0,1,0,0,1,0,0,1},{0,1,0,0,1,1,0,0,1,0},{0,0,1,0,0,0,0,1,0,0},{0,0,0,1,1,1,1,0,0,0}},
     skins = {{0,0,0,0,0,0,0,0,0,0},{0,1,1,1,1,1,1,1,1,0},{0,1,0,0,0,0,0,0,1,0},{0,1,0,1,1,1,1,0,1,0},{0,1,0,1,0,0,1,0,1,0},{0,1,0,1,0,0,1,0,1,0},{0,1,0,1,1,1,1,0,1,0},{0,1,0,0,0,0,0,0,1,0},{0,1,1,1,1,1,1,1,1,0},{0,0,0,0,0,0,0,0,0,0}},
     config = {{0,0,0,1,1,1,1,0,0,0},{0,0,1,1,0,0,1,1,0,0},{0,1,1,0,0,0,0,1,1,0},{1,1,0,0,1,1,0,0,1,1},{1,1,0,1,1,1,1,0,1,1},{1,1,0,1,1,1,1,0,1,1},{1,1,0,0,1,1,0,0,1,1},{0,1,1,0,0,0,0,1,1,0},{0,0,1,1,0,0,1,1,0,0},{0,0,0,1,1,1,1,0,0,0}},
+    sword = {{0,0,0,0,0,0,0,1,1,0},{0,0,0,0,0,0,1,1,0,0},{0,0,0,0,0,1,1,0,0,0},{0,0,0,0,1,1,0,0,0,0},{0,0,0,1,1,0,0,0,0,0},{0,1,1,1,0,0,0,0,0,0},{0,1,1,0,0,0,0,0,0,0},{1,0,0,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,0,0,0}},
+    globe = {{0,0,0,1,1,1,1,0,0,0},{0,0,1,1,0,0,1,1,0,0},{0,1,1,0,0,0,0,1,1,0},{1,1,0,0,1,1,0,0,1,1},{1,1,0,1,1,1,1,0,1,1},{1,1,0,1,1,1,1,0,1,1},{1,1,0,0,1,1,0,0,1,1},{0,1,1,0,0,0,0,1,1,0},{0,0,1,1,0,0,1,1,0,0},{0,0,0,1,1,1,1,0,0,0}},
+    eye = {{0,0,0,0,0,0,0,0,0,0},{0,0,1,1,1,1,1,1,0,0},{0,1,1,0,0,0,0,1,1,0},{1,1,0,0,1,1,0,0,1,1},{1,0,0,1,1,1,1,0,0,1},{1,0,0,1,1,1,1,0,0,1},{1,1,0,0,1,1,0,0,1,1},{0,1,1,0,0,0,0,1,1,0},{0,0,1,1,1,1,1,1,0,0},{0,0,0,0,0,0,0,0,0,0}},
+    sparkles = {{0,0,0,0,1,0,0,0,0,0},{0,0,0,0,1,0,0,0,0,0},{0,0,1,1,1,1,1,0,0,0},{0,0,0,0,1,0,0,0,0,0},{0,0,0,0,1,0,0,0,0,0},{0,0,0,0,0,0,0,1,0,0},{0,0,0,0,0,0,1,1,1,0},{0,0,0,0,0,0,0,1,0,0},{0,0,0,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,0,0,0}},
+    user = {{0,0,0,0,1,1,0,0,0,0},{0,0,0,1,1,1,1,0,0,0},{0,0,0,1,1,1,1,0,0,0},{0,0,0,0,1,1,0,0,0,0},{0,0,1,1,1,1,1,1,0,0},{0,1,1,1,1,1,1,1,1,0},{0,0,0,1,1,1,1,0,0,0},{0,0,0,1,1,1,1,0,0,0},{0,0,0,0,0,0,0,0,0,0},{0,0,0,0,0,0,0,0,0,0}},
+    box = {{0,0,0,0,0,0,0,0,0,0},{0,1,1,1,1,1,1,1,1,0},{0,1,0,0,0,0,0,0,1,0},{0,1,0,0,0,0,0,0,1,0},{0,1,0,0,0,0,0,0,1,0},{0,1,0,0,0,0,0,0,1,0},{0,1,0,0,0,0,0,0,1,0},{0,1,0,0,0,0,0,0,1,0},{0,1,1,1,1,1,1,1,1,0},{0,0,0,0,0,0,0,0,0,0}},
+    settings = {{0,0,0,1,1,1,1,0,0,0},{0,0,1,0,0,0,0,1,0,0},{0,1,0,0,1,1,0,0,1,0},{1,0,0,1,0,0,1,0,0,1},{1,0,1,0,0,0,0,1,0,1},{1,0,1,0,0,0,0,1,0,1},{1,0,0,1,0,0,1,0,0,1},{0,1,0,0,1,1,0,0,1,0},{0,0,1,0,0,0,0,1,0,0},{0,0,0,1,1,1,1,0,0,0}},
 }
 
 local function RenderPixelIcon(parent, iconKey, color, pixelSize, offsetX, offsetY)
-    local data = PixelIcons[iconKey]
-    if not data then return nil end
+    local data = PixelIcons[iconKey] or PixelIcons["misc"]
     pixelSize = pixelSize or 1
     offsetX = offsetX or 0
     offsetY = offsetY or 0
@@ -334,7 +337,6 @@ local function RecolorPixelIcon(container, color)
     end
 end
 
--- ==================== UTILS ====================
 local function GetParent()
     local ok, hui = pcall(function() return gethui and gethui() end)
     if ok and hui then return hui end
@@ -374,7 +376,6 @@ local function MakeDraggable(frame, handle)
     end)
 end
 
--- ==================== LIBRARY STATE ====================
 local Library = {
     Toggles = {},
     Options = {},
@@ -385,13 +386,11 @@ local Library = {
     ShowCustomCursor = false,
 }
 
--- Watermark (requerido por el script original)
 Library.Watermark = { Text = "" }
 function Library:SetWatermark(text)
     Library.Watermark.Text = tostring(text or "")
 end
 
--- ==================== NOTIFICATIONS ====================
 local NotifGui = New("ScreenGui", {
     Name = "PrototypoNotifs",
     ResetOnSpawn = false,
@@ -437,7 +436,6 @@ function Library:Notify(data, time, type)
     New("Frame", { Size = UDim2.new(0, 1, 1, 0), BackgroundColor3 = Theme.Border, BorderSizePixel = 0, Parent = notif })
     New("Frame", { Size = UDim2.new(0, 1, 1, 0), Position = UDim2.new(1, -1, 0, 0), BackgroundColor3 = Theme.Border, BorderSizePixel = 0, Parent = notif })
     New("Frame", { Size = UDim2.new(0, 2, 1, -2), Position = UDim2.new(0, 1, 0, 1), BackgroundColor3 = Theme.Accent, BorderSizePixel = 0, Parent = notif })
-
     New("TextLabel", {
         Size = UDim2.new(0, 60, 1, 0), Position = UDim2.new(0, 6, 0, 0), BackgroundTransparency = 1,
         Text = " " .. tostring(title), TextColor3 = Theme.Accent, TextSize = 11,
@@ -448,11 +446,9 @@ function Library:Notify(data, time, type)
         Text = tostring(desc), TextColor3 = Theme.Text, TextSize = 11,
         Font = MONO_FONT, TextXAlignment = Enum.TextXAlignment.Left, TextTruncate = Enum.TextTruncate.AtEnd, Parent = notif,
     })
-
     task.delay(duration, function() pcall(function() notif:Destroy() end) end)
 end
 
--- ==================== MAIN WINDOW ====================
 local ScreenGui = New("ScreenGui", {
     Name = "PrototypoUI", ResetOnSpawn = false,
     ZIndexBehavior = Enum.ZIndexBehavior.Sibling, DisplayOrder = 99998, IgnoreGuiInset = true,
@@ -473,7 +469,6 @@ local Header = New("Frame", {
     BackgroundColor3 = Theme.Header, BorderSizePixel = 0, Parent = MainFrame,
 })
 New("Frame", { Size = UDim2.new(1, 0, 0, 1), Position = UDim2.new(0, 0, 1, -1), BackgroundColor3 = Theme.Border, BorderSizePixel = 0, Parent = Header })
-
 New("TextLabel", {
     Size = UDim2.new(0, 120, 1, 0), Position = UDim2.new(0, 6, 0, 0), BackgroundTransparency = 1,
     Text = "prototypo.cc", TextColor3 = Theme.Accent, TextSize = 11,
@@ -484,7 +479,6 @@ New("TextLabel", {
     Text = "build: 6.7.62", TextColor3 = Theme.TextDim, TextSize = 10,
     Font = MONO_FONT, TextXAlignment = Enum.TextXAlignment.Right, Parent = Header,
 })
-
 MakeDraggable(MainFrame, Header)
 
 local TabBar = New("Frame", {
@@ -499,7 +493,8 @@ local ContentArea = New("Frame", {
     BackgroundTransparency = 1, Parent = MainFrame,
 })
 
--- ==================== CONTROLS ====================
+-- ============ CONTROLS ============
+
 local function CreateToggle(parent, flag, opts)
     opts = opts or {}
     local toggle = { Type = "Toggle", Flag = flag, Value = opts.Default or false, Callback = opts.Callback, Changed = {} }
@@ -609,25 +604,59 @@ local function CreateDropdown(parent, flag, opts)
             item.MouseEnter:Connect(function() item.BackgroundColor3 = Theme.Accent; item.TextColor3 = Color3.fromRGB(0, 0, 0) end)
             item.MouseLeave:Connect(function() item.BackgroundColor3 = Theme.BG; item.TextColor3 = Theme.Text end)
             item.MouseButton1Click:Connect(function()
-                dd.Value = v
-                btn.Text = " " .. tostring(v)
-                btn.TextColor3 = Theme.Text
-                closeList()
-                if dd.Callback then pcall(dd.Callback, v) end
+                if dd.Multi then
+                    dd.Value = dd.Value or {}
+                    local found = false
+                    for j, vv in ipairs(dd.Value) do
+                        if vv == v then table.remove(dd.Value, j); found = true; break end
+                    end
+                    if not found then table.insert(dd.Value, v) end
+                    local names = {}
+                    for _, x in ipairs(dd.Value) do table.insert(names, tostring(x)) end
+                    btn.Text = " " .. (#names > 0 and table.concat(names, ", ") or "select...")
+                    if dd.Callback then pcall(dd.Callback, dd.Value) end
+                else
+                    dd.Value = v
+                    btn.Text = " " .. tostring(v)
+                    btn.TextColor3 = Theme.Text
+                    closeList()
+                    if dd.Callback then pcall(dd.Callback, v) end
+                end
             end)
         end
         list.Size = UDim2.new(1, 0, 0, math.min(#dd.Values * 13 + 2, 160))
     end
 
-    function dd:SetValue(v) self.Value = v; if v ~= nil then btn.Text = " " .. tostring(v); btn.TextColor3 = Theme.Text end; if self.Callback then pcall(self.Callback, v) end end
+    function dd:SetValue(v)
+        if self.Multi then
+            self.Value = type(v) == "table" and v or (v ~= nil and {v} or {})
+            local names = {}
+            for _, x in ipairs(self.Value) do table.insert(names, tostring(x)) end
+            btn.Text = " " .. (#names > 0 and table.concat(names, ", ") or "select...")
+        else
+            self.Value = v
+            if v ~= nil then btn.Text = " " .. tostring(v); btn.TextColor3 = Theme.Text end
+        end
+        if self.Callback then pcall(self.Callback, self.Value) end
+    end
     function dd:SetValues(vals) self.Values = vals or {} end
     function dd:Display() end
 
     btn.MouseButton1Click:Connect(function() if list.Visible then closeList() else openList() end end)
+
+    -- Handle default value
     if opts.Default ~= nil then
-        if type(opts.Default) == "number" and dd.Values[opts.Default] then dd.Value = dd.Values[opts.Default]
-        else dd.Value = opts.Default end
-        dd:SetValue(dd.Value)
+        if dd.Multi then
+            dd.Value = type(opts.Default) == "table" and opts.Default or {}
+            dd:SetValue(dd.Value)
+        else
+            if type(opts.Default) == "number" and dd.Values[opts.Default] then
+                dd.Value = dd.Values[opts.Default]
+            else
+                dd.Value = opts.Default
+            end
+            dd:SetValue(dd.Value)
+        end
     end
     Library.Options[flag] = dd
     return dd, row
@@ -740,7 +769,7 @@ local function CreateDivider(parent)
     return New("Frame", { Size = UDim2.new(1, 0, 0, 1), BackgroundColor3 = Theme.BorderLight, BorderSizePixel = 0, Parent = parent }), nil
 end
 
--- ==================== GROUPBOX ====================
+-- ============ GROUPBOX ============
 local function CreateGroupbox(parent, title)
     local box = New("Frame", { Size = UDim2.new(1, -4, 0, 18), BackgroundColor3 = Theme.Groupbox, BorderSizePixel = 0, AutomaticSize = Enum.AutomaticSize.Y, Parent = parent })
     New("Frame", { Size = UDim2.new(1, 0, 0, 1), BackgroundColor3 = Theme.Border, BorderSizePixel = 0, Parent = box })
@@ -762,6 +791,7 @@ local function CreateGroupbox(parent, title)
     function gb:AddButton(o) return CreateButton(content, o) end
     function gb:AddLabel(t)
         local l, e = CreateLabel(content, t)
+        -- AddColorPicker to label object (fix for addColor/addColor3 in BuildUI)
         function l:AddColorPicker(f, o)
             local r = New("Frame", { Size = UDim2.new(1, 0, 0, 13), BackgroundTransparency = 1, Parent = content })
             New("TextLabel", { Size = UDim2.new(1, -16, 1, 0), BackgroundTransparency = 1, Text = o and o.Title or f, TextColor3 = Theme.TextDim, TextSize = 10, Font = MONO_FONT, TextXAlignment = Enum.TextXAlignment.Left, Parent = r })
@@ -776,7 +806,7 @@ local function CreateGroupbox(parent, title)
     return gb
 end
 
--- ==================== TAB SYSTEM ====================
+-- ============ TAB SYSTEM ============
 local function CreateTab(name, icon, order)
     local tabFrame = New("Frame", { Name = name, Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, Visible = false, Parent = ContentArea })
     local leftCol = New("ScrollingFrame", { Size = UDim2.new(0.5, -4, 1, -4), Position = UDim2.new(0, 2, 0, 2), BackgroundTransparency = 1, BorderSizePixel = 0, ScrollBarThickness = 2, ScrollBarImageColor3 = Theme.Accent, CanvasSize = UDim2.new(0, 0, 0, 0), AutomaticCanvasSize = Enum.AutomaticSize.Y, Parent = tabFrame })
@@ -809,17 +839,19 @@ local function CreateTab(name, icon, order)
     return tab
 end
 
--- ==================== WINDOW API ====================
+-- ============ WINDOW API ============
 local Window = { Holder = MainFrame }
 function Window:AddTab(name, icon) return CreateTab(name, icon, #Library.Tabs + 1) end
 
 function Library:CreateWindow(opts)
     opts = opts or {}
-    -- Aplicar título si viene
     if opts.Title then
         pcall(function()
-            local titleLbl = Header:FindFirstChildOfClass("TextLabel")
-            if titleLbl then titleLbl.Text = tostring(opts.Title) end
+            for _, c in ipairs(Header:GetChildren()) do
+                if c:IsA("TextLabel") and c.TextXAlignment == Enum.TextXAlignment.Left then
+                    c.Text = tostring(opts.Title)
+                end
+            end
         end)
     end
     if opts.Footer then
@@ -831,20 +863,14 @@ function Library:CreateWindow(opts)
             end
         end)
     end
-    -- Centrar si se pide
     if opts.Center then
         local vp = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1920, 1080)
-        MainFrame.Position = UDim2.fromOffset(
-            math.floor((vp.X - 620) / 2),
-            math.floor((vp.Y - 480) / 2)
-        )
+        MainFrame.Position = UDim2.fromOffset(math.floor((vp.X - 620) / 2), math.floor((vp.Y - 480) / 2))
     end
-    -- Auto mostrar
     if opts.AutoShow ~= false then
         MainFrame.Visible = true
         Library.Toggled = true
     end
-    -- Activar primer tab después de que se creen
     task.defer(function()
         task.wait(0.2)
         local first
@@ -855,7 +881,6 @@ function Library:CreateWindow(opts)
 end
 Library.CreateWindow = function(self, opts) return Library:CreateWindow(opts) end
 
--- Toggle key
 UserInputService.InputBegan:Connect(function(input, gpe)
     if gpe then return end
     local k = tostring(Library.ToggleKeybind or "RightShift"):gsub("%s+", "")
@@ -867,11 +892,9 @@ UserInputService.InputBegan:Connect(function(input, gpe)
     end
 end)
 
--- Stubs para compatibilidad
 local ThemeManager = { SetLibrary = function() end, SetFolder = function() end, ApplyToGroupbox = function() end, ApplyToTab = function() end }
 local SaveManager = { SetLibrary = function() end, SetFolder = function() end, IgnoreThemeSettings = function() end, SetIgnoreIndexes = function() end, BuildConfigSection = function() end }
 
--- Inicialmente oculto (CreateWindow lo mostrará si AutoShow=true)
 MainFrame.Visible = false
 Library.Toggled = false
 
